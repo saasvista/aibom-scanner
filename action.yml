@@ -1,0 +1,27 @@
+name: 'AIBOM Scanner'
+description: 'Scan your codebase for AI SDK usage and compliance risks (NIST AI RMF, ISO 42001, EU AI Act)'
+branding:
+  icon: 'shield'
+  color: 'blue'
+inputs:
+  path:
+    description: 'Path to scan'
+    required: false
+    default: '.'
+  format:
+    description: 'Output format (json, table, sarif)'
+    required: false
+    default: 'sarif'
+  severity-threshold:
+    description: 'Fail if findings at or above this severity (low, medium, high, critical)'
+    required: false
+    default: 'high'
+runs:
+  using: 'composite'
+  steps:
+    - name: Install aibom-scanner
+      run: pip install aibom-scanner
+      shell: bash
+    - name: Run scan
+      run: aibom-scanner scan --path ${{ inputs.path }} --format ${{ inputs.format }} --severity-threshold ${{ inputs.severity-threshold }}
+      shell: bash

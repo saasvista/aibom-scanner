@@ -1,0 +1,953 @@
+{
+  "detections": [
+    {
+      "provider": "azure_openai",
+      "sdk_name": "openai",
+      "file_path": "aibom_scanner/risk_engine.py",
+      "line_number": 67,
+      "code_snippet": "\"providers\": [\"openai\", \"anthropic\", \"google_ai\", \"azure_openai\", \"cohere\", \"mistral\", \"groq\", \"together_ai\", \"fireworks\", \"replicate\", \"zhipu\", \"iflytek\", \"sensetime\", \"alibaba_qwen\", \"baidu_ernie\", \"deepseek\", \"moonshot\", \"minimax\", \"baichuan\", \"yi\"],",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "aws_bedrock",
+      "sdk_name": "boto3",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 29,
+      "code_snippet": "(\"aws_bedrock\", \"boto3\", r\"bedrock-runtime|bedrock\\.invoke_model|BedrockRuntime\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "google_ai",
+      "sdk_name": "google-generativeai",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 31,
+      "code_snippet": "(\"google_ai\", \"google-generativeai\", r\"(?:from\\s+google\\.generativeai|import\\s+google\\.generativeai|@google/generative-ai)\", \"import\"),",
+      "confidence": 0.9,
+      "detection_type": "import",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "azure_openai",
+      "sdk_name": "openai",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 34,
+      "code_snippet": "(\"azure_openai\", \"openai\", r\"AzureOpenAI\\(|azure\\.openai|AZURE_OPENAI\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "langchain",
+      "sdk_name": "langchain",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 42,
+      "code_snippet": "(\"langchain\", \"langchain\", r\"(?:from\\s+langchain|import\\s+langchain|@langchain)\", \"import\"),",
+      "confidence": 0.9,
+      "detection_type": "import",
+      "model_name": "llama-index",
+      "version": null
+    },
+    {
+      "provider": "zhipu",
+      "sdk_name": "zhipuai",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 63,
+      "code_snippet": "(\"zhipu\", \"zhipuai\", r\"ZhipuAI\\(\\)|zhipuai\\.model_api|zhipu_api_key\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "iflytek",
+      "sdk_name": "iflytek",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 67,
+      "code_snippet": "(\"iflytek\", \"iflytek\", r\"IFLYTEK_API_KEY|SPARK_API_KEY|spark-api\\.xf-yun\\.com|SparkApi\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "sensetime",
+      "sdk_name": "sensetime",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 71,
+      "code_snippet": "(\"sensetime\", \"sensetime\", r\"SENSETIME_API_KEY|SENSENOVA_API_KEY|api\\.sensenova\\.cn|SenseNovaClient\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "alibaba_qwen",
+      "sdk_name": "dashscope",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 74,
+      "code_snippet": "(\"alibaba_qwen\", \"dashscope\", r\"dashscope\\.Generation|dashscope\\.TextGeneration|DASHSCOPE_API_KEY\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "baidu_ernie",
+      "sdk_name": "qianfan",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 78,
+      "code_snippet": "(\"baidu_ernie\", \"qianfan\", r\"qianfan\\.ChatCompletion|qianfan\\.Completion|QIANFAN_\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "deepseek",
+      "sdk_name": "deepseek",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 82,
+      "code_snippet": "(\"deepseek\", \"deepseek\", r\"DEEPSEEK_API_KEY|api\\.deepseek\\.com\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "moonshot",
+      "sdk_name": "moonshot",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 85,
+      "code_snippet": "(\"moonshot\", \"moonshot\", r\"MOONSHOT_API_KEY|api\\.moonshot\\.cn\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "minimax",
+      "sdk_name": "minimax",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 88,
+      "code_snippet": "(\"minimax\", \"minimax\", r\"MINIMAX_API_KEY|api\\.minimax\\.chat|MiniMaxClient\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "baichuan",
+      "sdk_name": "baichuan",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 91,
+      "code_snippet": "(\"baichuan\", \"baichuan\", r\"BAICHUAN_API_KEY|api\\.baichuan-ai\\.com|BaichuanClient\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "yi",
+      "sdk_name": "yi",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 93,
+      "code_snippet": "(\"yi\", \"yi\", r\"api\\.lingyiwanwu\\.com|YI_API_KEY\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "semantic_kernel",
+      "sdk_name": "semantic-kernel",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 111,
+      "code_snippet": "(\"semantic_kernel\", \"semantic-kernel\", r\"(?:Kernel\\(\\)|kernel\\.add_plugin|kernel\\.invoke|KernelFunction)\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "mcp",
+      "sdk_name": "mcp",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 114,
+      "code_snippet": "(\"mcp\", \"mcp\", r\"(?:FastMCP\\(|mcp\\.server|mcp\\.client|StdioServerTransport|SSEServerTransport|StreamableHTTPServerTransport)\", \"api_call\"),",
+      "confidence": 0.9,
+      "detection_type": "api_call",
+      "model_name": null,
+      "version": null
+    },
+    {
+      "provider": "langchain",
+      "sdk_name": "langchain",
+      "file_path": "aibom_scanner/detectors/ai_sdk.py",
+      "line_number": 209,
+      "code_snippet": "\"@langchain/core\": \"langchain\",",
+      "confidence": 0.9,
+      "detection_type": "import",
+      "model_name": null,
+      "version": null
+    }
+  ],
+  "dependencies": [],
+  "dev_tools": [],
+  "secrets": [
+    {
+      "method": "vault",
+      "evidence_type": "code_pattern",
+      "file_path": "aibom_scanner/detectors/secrets.py",
+      "confidence": 0.9,
+      "detail": "Code pattern for vault detected",
+      "repo": "",
+      "raw_value": "",
+      "redacted_value": ""
+    },
+    {
+      "method": "aws_secrets_manager",
+      "evidence_type": "code_pattern",
+      "file_path": "aibom_scanner/detectors/secrets.py",
+      "confidence": 0.9,
+      "detail": "Code pattern for aws_secrets_manager detected",
+      "repo": "",
+      "raw_value": "",
+      "redacted_value": ""
+    },
+    {
+      "method": "gcp_secret_manager",
+      "evidence_type": "code_pattern",
+      "file_path": "aibom_scanner/detectors/secrets.py",
+      "confidence": 0.9,
+      "detail": "Code pattern for gcp_secret_manager detected",
+      "repo": "",
+      "raw_value": "",
+      "redacted_value": ""
+    }
+  ],
+  "guardrails": [],
+  "transparency": [],
+  "hitl": [],
+  "risks": [
+    {
+      "category": "model_governance",
+      "title": "AI model usage without governance framework",
+      "severity": "high",
+      "remediation": "Establish an AI governance policy covering model selection, approval, monitoring, and deprecation. Create a registry of all AI models: provider, version, purpose, and data flows. Consolidate provider management. Establish per-provider risk assessments. Pin model versions in code. Establish change management for model upgrades. Audit orchestration framework dependencies. Pin versions. Monitor security advisories. Establish bias testing procedures. Monitor for disparate impact. Implement model performance monitoring: latency, error rates, quality metrics. Establish formal AI risk assessment: classify by risk level, prioritize remediation. Monitor output distributions, establish baselines, configure drift alerts.",
+      "framework_refs": [
+        "NIST-GOVERN-1.1",
+        "ISO-42001-5.1",
+        "EU-AI-ACT-ART-9",
+        "NIST-GOVERN-1.2",
+        "ISO-42001-A.6.2",
+        "EU-AI-ACT-ART-11",
+        "NIST-GOVERN-1.3",
+        "NIST-MANAGE-2.1",
+        "ISO-42001-A.8.4",
+        "NIST-MAP-2.3",
+        "ISO-42001-A.8.2",
+        "NIST-MEASURE-2.7",
+        "ISO-42001-A.9.4",
+        "EU-AI-ACT-ART-10",
+        "NIST-MEASURE-2.1",
+        "ISO-42001-A.8.3",
+        "EU-AI-ACT-ART-15",
+        "NIST-MANAGE-1.1",
+        "ISO-42001-A.7.3",
+        "NIST-MANAGE-3.1"
+      ],
+      "affected_providers": [
+        "baichuan",
+        "baidu_ernie",
+        "mcp",
+        "semantic_kernel",
+        "google_ai",
+        "azure_openai",
+        "sensetime",
+        "moonshot",
+        "langchain",
+        "alibaba_qwen",
+        "deepseek",
+        "minimax",
+        "yi",
+        "zhipu",
+        "iflytek",
+        "aws_bedrock"
+      ],
+      "evidence_qualifier": ""
+    },
+    {
+      "category": "transparency",
+      "title": "No documentation of AI system purposes and limitations",
+      "severity": "high",
+      "remediation": "Document purpose, capabilities, and limitations of each AI integration. Implement clear disclosure when content is AI-generated. Update terms of service. Log AI model inputs (sanitized), outputs, and decision rationale.",
+      "framework_refs": [
+        "NIST-MAP-1.1",
+        "ISO-42001-A.6.1",
+        "EU-AI-ACT-ART-13",
+        "NIST-MAP-1.6",
+        "EU-AI-ACT-ART-52",
+        "NIST-MEASURE-2.5",
+        "ISO-42001-A.8.3",
+        "EU-AI-ACT-ART-12"
+      ],
+      "affected_providers": [
+        "baichuan",
+        "baidu_ernie",
+        "mcp",
+        "semantic_kernel",
+        "google_ai",
+        "azure_openai",
+        "sensetime",
+        "moonshot",
+        "langchain",
+        "alibaba_qwen",
+        "deepseek",
+        "minimax",
+        "yi",
+        "zhipu",
+        "iflytek",
+        "aws_bedrock"
+      ],
+      "evidence_qualifier": ""
+    },
+    {
+      "category": "accountability",
+      "title": "No designated AI risk owner or oversight role",
+      "severity": "high",
+      "remediation": "Assign an AI risk owner for governance, monitoring, and incident response. Develop an AI-specific incident response plan covering model failures and data breaches. Implement human-in-the-loop controls for high-stakes AI decisions.",
+      "framework_refs": [
+        "NIST-GOVERN-2.1",
+        "ISO-42001-5.3",
+        "EU-AI-ACT-ART-9",
+        "NIST-MANAGE-4.3",
+        "ISO-42001-A.9.3",
+        "NIST-GOVERN-2.2",
+        "ISO-42001-A.9.1",
+        "EU-AI-ACT-ART-14"
+      ],
+      "affected_providers": [
+        "baichuan",
+        "baidu_ernie",
+        "mcp",
+        "semantic_kernel",
+        "google_ai",
+        "azure_openai",
+        "sensetime",
+        "moonshot",
+        "langchain",
+        "alibaba_qwen",
+        "deepseek",
+        "minimax",
+        "yi",
+        "zhipu",
+        "iflytek",
+        "aws_bedrock"
+      ],
+      "evidence_qualifier": ""
+    },
+    {
+      "category": "data_privacy",
+      "title": "Customer data sent to external AI provider without DPA",
+      "severity": "medium",
+      "remediation": "Verify current DPA status with each AI provider. Where missing, execute a DPA. Implement data anonymization before API calls. Identify data residency requirements. Confirm provider processing locations. Implement Standard Contractual Clauses where needed. Review AWS Bedrock terms, shared responsibility model, and compliance certifications.",
+      "framework_refs": [
+        "NIST-MAP-3.1",
+        "ISO-42001-A.7.5",
+        "EU-AI-ACT-ART-10",
+        "NIST-GOVERN-1.6",
+        "NIST-GOVERN-1.4",
+        "ISO-42001-A.7.3"
+      ],
+      "affected_providers": [
+        "baichuan",
+        "baidu_ernie",
+        "google_ai",
+        "azure_openai",
+        "sensetime",
+        "moonshot",
+        "alibaba_qwen",
+        "deepseek",
+        "minimax",
+        "yi",
+        "zhipu",
+        "iflytek",
+        "aws_bedrock"
+      ],
+      "evidence_qualifier": "data_to_ai"
+    },
+    {
+      "category": "security",
+      "title": "No input validation before AI model calls",
+      "severity": "medium",
+      "remediation": "Implement prompt injection defenses. Validate and sanitize all user input before passing to AI models. Validate and sanitize AI model outputs. Implement guardrails for harmful content. Assess whether AI use cases fall under EU AI Act high-risk categories.",
+      "framework_refs": [
+        "NIST-MANAGE-4.1",
+        "ISO-42001-A.8.6",
+        "EU-AI-ACT-ART-15",
+        "NIST-MEASURE-2.6",
+        "ISO-42001-A.8.5",
+        "EU-AI-ACT-ART-6",
+        "EU-AI-ACT-ART-43"
+      ],
+      "affected_providers": [
+        "baichuan",
+        "baidu_ernie",
+        "mcp",
+        "semantic_kernel",
+        "google_ai",
+        "azure_openai",
+        "sensetime",
+        "moonshot",
+        "langchain",
+        "alibaba_qwen",
+        "deepseek",
+        "minimax",
+        "yi",
+        "zhipu",
+        "iflytek",
+        "aws_bedrock"
+      ],
+      "evidence_qualifier": "user_facing_ai"
+    },
+    {
+      "category": "security",
+      "title": "API key management \u2014 secrets manager detected",
+      "severity": "low",
+      "remediation": "Move all API keys to a secrets manager. Rotate any keys found in code. Add secret scanning to CI/CD. Review AI dev tool data transmission policies. Establish approved tool list.",
+      "framework_refs": [
+        "NIST-MANAGE-4.1",
+        "ISO-42001-A.8.6",
+        "EU-AI-ACT-ART-15",
+        "NIST-MANAGE-4.2"
+      ],
+      "affected_providers": [
+        "baichuan",
+        "baidu_ernie",
+        "mcp",
+        "semantic_kernel",
+        "google_ai",
+        "azure_openai",
+        "sensetime",
+        "moonshot",
+        "langchain",
+        "alibaba_qwen",
+        "deepseek",
+        "minimax",
+        "yi",
+        "zhipu",
+        "iflytek",
+        "aws_bedrock"
+      ],
+      "evidence_qualifier": "",
+      "mitigation_status": "mitigated"
+    },
+    {
+      "category": "data_privacy",
+      "title": "No data classification policy for AI-processed information",
+      "severity": "medium",
+      "remediation": "Create a data classification scheme. Label data before it enters AI pipelines. Block sensitive/PII categories from external models.",
+      "framework_refs": [
+        "NIST-GOVERN-1.5",
+        "ISO-42001-A.7.4",
+        "EU-AI-ACT-ART-10"
+      ],
+      "affected_providers": [
+        "baichuan",
+        "baidu_ernie",
+        "mcp",
+        "semantic_kernel",
+        "google_ai",
+        "azure_openai",
+        "sensetime",
+        "moonshot",
+        "langchain",
+        "alibaba_qwen",
+        "deepseek",
+        "minimax",
+        "yi",
+        "zhipu",
+        "iflytek",
+        "aws_bedrock"
+      ],
+      "evidence_qualifier": "data_to_ai"
+    },
+    {
+      "category": "data_privacy",
+      "title": "AI provider may retain prompts for training",
+      "severity": "medium",
+      "remediation": "Review each provider's data retention policy. Opt out of training data usage where possible.",
+      "framework_refs": [
+        "NIST-MAP-3.2",
+        "ISO-42001-A.7.5"
+      ],
+      "affected_providers": [
+        "baichuan",
+        "baidu_ernie",
+        "google_ai",
+        "sensetime",
+        "moonshot",
+        "alibaba_qwen",
+        "deepseek",
+        "minimax",
+        "yi",
+        "zhipu",
+        "iflytek"
+      ],
+      "evidence_qualifier": ""
+    },
+    {
+      "category": "compliance",
+      "title": "US Entity List violation \u2014 prohibited Chinese AI provider",
+      "severity": "critical",
+      "remediation": "IMMEDIATE ACTION: Provider is on the US BIS Entity List. Remove all integrations. Revoke API keys. Document removal. Consult export compliance counsel.",
+      "framework_refs": [
+        "NIST-GOVERN-1.6",
+        "ISO-42001-A.7.3",
+        "EU-AI-ACT-ART-5"
+      ],
+      "affected_providers": [
+        "sensetime",
+        "zhipu",
+        "iflytek"
+      ],
+      "evidence_qualifier": ""
+    },
+    {
+      "category": "compliance",
+      "title": "Chinese AI provider \u2014 data sovereignty risk",
+      "severity": "high",
+      "remediation": "Data sent to these providers is stored on Chinese servers subject to Chinese law. Evaluate data classification requirements. Chinese AI providers do not offer GDPR/CCPA-compatible DPAs.",
+      "framework_refs": [
+        "NIST-GOVERN-1.6",
+        "ISO-42001-A.7.5",
+        "EU-AI-ACT-ART-10",
+        "NIST-MAP-3.1"
+      ],
+      "affected_providers": [
+        "baichuan",
+        "baidu_ernie",
+        "moonshot",
+        "alibaba_qwen",
+        "deepseek",
+        "minimax",
+        "yi",
+        "sensetime",
+        "zhipu",
+        "iflytek"
+      ],
+      "evidence_qualifier": ""
+    },
+    {
+      "category": "agentic_ai_governance",
+      "title": "Agentic AI framework without human oversight controls",
+      "severity": "high",
+      "remediation": "Implement HITL checkpoints, approval gates before external actions, and kill switches. Implement least-privilege tool permissions, sandboxing, and audit logging. Implement step-level logging with agent identity, decision rationale, and tool calls. Implement auth on MCP endpoints, restrict tool access, log invocations, establish approval gates.",
+      "framework_refs": [
+        "NIST-GOVERN-2.2",
+        "ISO-42001-A.9.1",
+        "EU-AI-ACT-ART-14",
+        "NIST-MANAGE-4.2",
+        "ISO-42001-A.8.6",
+        "NIST-MEASURE-2.5",
+        "ISO-42001-A.8.3",
+        "EU-AI-ACT-ART-12"
+      ],
+      "affected_providers": [
+        "mcp",
+        "semantic_kernel"
+      ],
+      "evidence_qualifier": ""
+    }
+  ],
+  "control_mappings": [
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-GOVERN-1.1",
+      "control_name": "GOVERN 1.1: AI governance policies and procedures are established",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-GOVERN-1.2",
+      "control_name": "GOVERN 1.2: AI system inventory and documentation maintained",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-GOVERN-1.3",
+      "control_name": "GOVERN 1.3: Risk management integrated into organizational governance",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-GOVERN-1.4",
+      "control_name": "GOVERN 1.4: Third-party AI provider compliance assessed",
+      "status": "partial",
+      "notes": "[MEDIUM] Customer data sent to external AI provider without DPA"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-GOVERN-1.5",
+      "control_name": "GOVERN 1.5: Data governance policies for AI systems established",
+      "status": "partial",
+      "notes": "[MEDIUM] No data classification policy for AI-processed information"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-GOVERN-1.6",
+      "control_name": "GOVERN 1.6: Cross-border data transfer requirements addressed",
+      "status": "partial",
+      "notes": "[MEDIUM] Customer data sent to external AI provider without DPA; [CRITICAL] US Entity List violation \u2014 prohibited Chinese AI provider; [HIGH] Chinese AI provider \u2014 data sovereignty risk"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-GOVERN-2.1",
+      "control_name": "GOVERN 2.1: Roles and responsibilities for AI oversight defined",
+      "status": "partial",
+      "notes": "[HIGH] No designated AI risk owner or oversight role"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-GOVERN-2.2",
+      "control_name": "GOVERN 2.2: Human oversight mechanisms established",
+      "status": "partial",
+      "notes": "[HIGH] No designated AI risk owner or oversight role; [HIGH] Agentic AI framework without human oversight controls"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MAP-1.1",
+      "control_name": "MAP 1.1: AI system purposes and intended uses documented",
+      "status": "partial",
+      "notes": "[HIGH] No documentation of AI system purposes and limitations"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MAP-1.6",
+      "control_name": "MAP 1.6: Stakeholder engagement and transparency practices defined",
+      "status": "partial",
+      "notes": "[HIGH] No documentation of AI system purposes and limitations"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MAP-2.3",
+      "control_name": "MAP 2.3: AI supply chain risks identified and managed",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MAP-3.1",
+      "control_name": "MAP 3.1: Data processing agreements and privacy controls in place",
+      "status": "partial",
+      "notes": "[MEDIUM] Customer data sent to external AI provider without DPA; [HIGH] Chinese AI provider \u2014 data sovereignty risk"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MAP-3.2",
+      "control_name": "MAP 3.2: Data retention and provider training policies reviewed",
+      "status": "partial",
+      "notes": "[MEDIUM] AI provider may retain prompts for training"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MEASURE-2.1",
+      "control_name": "MEASURE 2.1: Model performance monitoring and metrics established",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MEASURE-2.5",
+      "control_name": "MEASURE 2.5: AI system logging and audit trails implemented",
+      "status": "partial",
+      "notes": "[HIGH] No documentation of AI system purposes and limitations; [HIGH] Agentic AI framework without human oversight controls"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MEASURE-2.6",
+      "control_name": "MEASURE 2.6: Output validation and safety measures active",
+      "status": "partial",
+      "notes": "[MEDIUM] No input validation before AI model calls"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MEASURE-2.7",
+      "control_name": "MEASURE 2.7: Bias testing and fairness evaluation procedures established",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MANAGE-1.1",
+      "control_name": "MANAGE 1.1: AI risk assessment and prioritization framework established",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MANAGE-2.1",
+      "control_name": "MANAGE 2.1: Model versioning and change management processes defined",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MANAGE-3.1",
+      "control_name": "MANAGE 3.1: Continuous risk monitoring and model drift detection implemented",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MANAGE-4.1",
+      "control_name": "MANAGE 4.1: Security controls for AI systems implemented",
+      "status": "partial",
+      "notes": "[MEDIUM] No input validation before AI model calls; [LOW] API key management \u2014 secrets manager detected"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MANAGE-4.2",
+      "control_name": "MANAGE 4.2: Developer tool security and data transmission reviewed",
+      "status": "mapped",
+      "notes": "[LOW] API key management \u2014 secrets manager detected; [HIGH] Agentic AI framework without human oversight controls"
+    },
+    {
+      "framework": "NIST AI RMF",
+      "control_id": "NIST-MANAGE-4.3",
+      "control_name": "MANAGE 4.3: AI incident response plan established",
+      "status": "partial",
+      "notes": "[HIGH] No designated AI risk owner or oversight role"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-5.1",
+      "control_name": "5.1 Leadership and commitment: Top management demonstrates commitment to AI management system",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-5.3",
+      "control_name": "5.3 Organizational roles: AI-related roles and responsibilities assigned",
+      "status": "partial",
+      "notes": "[HIGH] No designated AI risk owner or oversight role"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.6.1",
+      "control_name": "A.6.1 AI system documentation: AI system purposes, capabilities, and limitations documented",
+      "status": "partial",
+      "notes": "[HIGH] No documentation of AI system purposes and limitations"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.6.2",
+      "control_name": "A.6.2 AI system inventory: Comprehensive inventory of AI systems maintained",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.7.3",
+      "control_name": "A.7.3 Compliance requirements: Applicable compliance requirements identified and tracked",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework; [MEDIUM] Customer data sent to external AI provider without DPA; [CRITICAL] US Entity List violation \u2014 prohibited Chinese AI provider"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.7.4",
+      "control_name": "A.7.4 Data management: Data classification and management for AI systems established",
+      "status": "partial",
+      "notes": "[MEDIUM] No data classification policy for AI-processed information"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.7.5",
+      "control_name": "A.7.5 Privacy and data protection: Privacy controls for AI data processing implemented",
+      "status": "partial",
+      "notes": "[MEDIUM] Customer data sent to external AI provider without DPA; [MEDIUM] AI provider may retain prompts for training; [HIGH] Chinese AI provider \u2014 data sovereignty risk"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.8.2",
+      "control_name": "A.8.2 Supply chain management: AI supply chain risks assessed and managed",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.8.3",
+      "control_name": "A.8.3 Logging and monitoring: AI system activities logged and monitored",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework; [HIGH] No documentation of AI system purposes and limitations; [HIGH] Agentic AI framework without human oversight controls"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.8.4",
+      "control_name": "A.8.4 Change management: Change management procedures for AI systems established",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.8.5",
+      "control_name": "A.8.5 Output controls: AI output validation and safety controls implemented",
+      "status": "partial",
+      "notes": "[MEDIUM] No input validation before AI model calls"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.8.6",
+      "control_name": "A.8.6 Security controls: Security measures for AI systems implemented",
+      "status": "partial",
+      "notes": "[MEDIUM] No input validation before AI model calls; [LOW] API key management \u2014 secrets manager detected; [HIGH] Agentic AI framework without human oversight controls"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.9.1",
+      "control_name": "A.9.1 Human oversight: Human oversight mechanisms for AI decisions established",
+      "status": "partial",
+      "notes": "[HIGH] No designated AI risk owner or oversight role; [HIGH] Agentic AI framework without human oversight controls"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.9.3",
+      "control_name": "A.9.3 Incident management: AI incident response procedures defined",
+      "status": "partial",
+      "notes": "[HIGH] No designated AI risk owner or oversight role"
+    },
+    {
+      "framework": "ISO 42001",
+      "control_id": "ISO-42001-A.9.4",
+      "control_name": "A.9.4 Bias and fairness: Bias testing and fairness evaluation conducted",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-5",
+      "control_name": "Article 5: Prohibited AI practices",
+      "status": "partial",
+      "notes": "[CRITICAL] US Entity List violation \u2014 prohibited Chinese AI provider"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-6",
+      "control_name": "Article 6: High-risk AI system classification assessment",
+      "status": "partial",
+      "notes": "[MEDIUM] No input validation before AI model calls"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-9",
+      "control_name": "Article 9: Risk management system for AI established",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework; [HIGH] No designated AI risk owner or oversight role"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-10",
+      "control_name": "Article 10: Data governance measures for training and input data",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework; [MEDIUM] Customer data sent to external AI provider without DPA; [MEDIUM] No data classification policy for AI-processed information; [HIGH] Chinese AI provider \u2014 data sovereignty risk"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-11",
+      "control_name": "Article 11: Technical documentation maintained",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-12",
+      "control_name": "Article 12: Record-keeping and logging requirements",
+      "status": "partial",
+      "notes": "[HIGH] No documentation of AI system purposes and limitations; [HIGH] Agentic AI framework without human oversight controls"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-13",
+      "control_name": "Article 13: Transparency and information provision to users",
+      "status": "partial",
+      "notes": "[HIGH] No documentation of AI system purposes and limitations"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-14",
+      "control_name": "Article 14: Human oversight measures implemented",
+      "status": "partial",
+      "notes": "[HIGH] No designated AI risk owner or oversight role; [HIGH] Agentic AI framework without human oversight controls"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-15",
+      "control_name": "Article 15: Accuracy, robustness, and cybersecurity measures",
+      "status": "partial",
+      "notes": "[HIGH] AI model usage without governance framework; [MEDIUM] No input validation before AI model calls; [LOW] API key management \u2014 secrets manager detected"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-43",
+      "control_name": "Article 43: Conformity assessment procedures",
+      "status": "partial",
+      "notes": "[MEDIUM] No input validation before AI model calls"
+    },
+    {
+      "framework": "EU AI Act",
+      "control_id": "EU-AI-ACT-ART-52",
+      "control_name": "Article 52: Transparency obligations for AI-generated content",
+      "status": "partial",
+      "notes": "[HIGH] No documentation of AI system purposes and limitations"
+    }
+  ],
+  "summary": {
+    "providers": {
+      "azure_openai": 2,
+      "aws_bedrock": 1,
+      "google_ai": 1,
+      "langchain": 2,
+      "zhipu": 1,
+      "iflytek": 1,
+      "sensetime": 1,
+      "alibaba_qwen": 1,
+      "baidu_ernie": 1,
+      "deepseek": 1,
+      "moonshot": 1,
+      "minimax": 1,
+      "baichuan": 1,
+      "yi": 1,
+      "semantic_kernel": 1,
+      "mcp": 1
+    },
+    "total_detections": 18,
+    "total_dependencies": 0,
+    "total_dev_tools": 0,
+    "files_scanned": 15,
+    "files_with_detections": 2,
+    "risk_counts": {
+      "critical": 1,
+      "high": 5,
+      "medium": 4,
+      "low": 1
+    }
+  },
+  "metadata": {
+    "scanner_version": "1.0.0",
+    "scan_start": "2026-04-09T17:01:27.669426+00:00",
+    "scan_end": "2026-04-09T17:01:27.809800+00:00",
+    "path": "/home/mike/proj/aibom-scanner/src"
+  }
+}

@@ -9,7 +9,7 @@ description = "Scan codebases for AI SDK usage and map compliance risks to NIST 
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
-authors = [{name = "Mike Carroll", email = "mike@saferstrategy.com"}]
+authors = [{name = "Mike Carroll", email = "mike@saasvista.io"}]
 keywords = ["ai", "compliance", "sbom", "aibom", "risk", "nist", "iso42001", "eu-ai-act", "security", "governance"]
 classifiers = [
     "Development Status :: 4 - Beta",

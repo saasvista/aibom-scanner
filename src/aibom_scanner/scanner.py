@@ -127,8 +127,11 @@ def scan_directory(path: str | Path) -> ScanResult:
     # Combine all secrets evidence
     combined_secrets = all_secrets + all_hardcoded
 
-    # Extract unique providers
-    providers = list({d.provider for d in all_detections + all_dep_detections})
+    # Extract unique providers (detections are Detection objects, deps are dicts)
+    providers = list(
+        {d.provider for d in all_detections}
+        | {d["provider"] for d in all_dep_detections if isinstance(d, dict)}
+    )
 
     # Risk classification
     raw_risks = classify_risks(
@@ -146,12 +149,15 @@ def scan_directory(path: str | Path) -> ScanResult:
 
     # Provider summary
     provider_counts: dict[str, int] = {}
-    for d in all_detections + all_dep_detections:
+    for d in all_detections:
         provider_counts[d.provider] = provider_counts.get(d.provider, 0) + 1
+    for d in all_dep_detections:
+        prov = d["provider"] if isinstance(d, dict) else d.provider
+        provider_counts[prov] = provider_counts.get(prov, 0) + 1
 
     return ScanResult(
         detections=[asdict(d) for d in all_detections],
-        dependencies=[asdict(d) for d in all_dep_detections],
+        dependencies=all_dep_detections,  # already dicts from scan_dependencies
         dev_tools=[asdict(d) for d in all_dev_tools],
         secrets=[asdict(s) for s in combined_secrets],
         risks=[_serialize_risk(r) for r in risks],

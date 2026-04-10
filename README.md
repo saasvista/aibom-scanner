@@ -1,80 +1,67 @@
-# aibom-scanner
+<p align="center">
+  <img src="docs/banner.png" alt="aibom-scanner" width="100%">
+</p>
 
-Scan codebases for AI SDK usage. Map compliance risks to NIST AI RMF, ISO 42001, and EU AI Act.
+<p align="center">
+  <strong>Scan codebases for AI SDK usage. Map compliance risks to NIST AI RMF, ISO 42001, and EU AI Act.</strong>
+</p>
 
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-43%20passing-green.svg)]()
+<p align="center">
+  <a href="https://pypi.org/project/aibom-scanner/"><img src="https://img.shields.io/pypi/v/aibom-scanner?color=blue&label=PyPI" alt="PyPI"></a>
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python"></a>
+  <a href="https://github.com/saasvista/aibom-scanner/actions"><img src="https://img.shields.io/badge/tests-43%20passing-brightgreen.svg" alt="Tests"></a>
+  <a href="https://github.com/saasvista/aibom-scanner"><img src="https://img.shields.io/badge/dependencies-0-brightgreen.svg" alt="Zero Dependencies"></a>
+</p>
 
-## What it does
+---
 
-`aibom-scanner` detects AI SDKs in your codebase and generates an **AI Bill of Materials (AIBOM)** with compliance risk findings.
-
-- **61 detection patterns** across 30+ AI providers (OpenAI, Anthropic, Google AI, AWS Bedrock, Cohere, Mistral, Groq, HuggingFace, and more)
-- **10 Chinese AI providers** with US BIS Entity List flagging (Zhipu, iFlytek, SenseTime = CRITICAL)
-- **Agentic AI** detection (CrewAI, AutoGen, LangGraph, Semantic Kernel, MCP)
-- **34 risk rules** across 8 categories with evidence-qualified severity
-- **48 compliance controls** mapped to NIST AI RMF (23), ISO 42001 (15), EU AI Act (10)
-- **Secrets detection** — hardcoded API keys, Vault, AWS Secrets Manager, dotenv patterns
-- **Dev tool detection** — Cursor, GitHub Copilot, Claude Code, Aider, TabNine, Codeium
-- **Zero dependencies** — pure Python stdlib
-
-## Quick start
+## Quick Start
 
 ```bash
 pip install aibom-scanner
 
-# Scan a directory
 aibom-scanner scan --path /path/to/your/repo
+```
 
-# JSON output
+<p align="center">
+  <img src="docs/screenshot.png" alt="aibom-scanner output" width="700">
+</p>
+
+## What It Finds
+
+`aibom-scanner` detects AI SDKs in your codebase and generates an **AI Bill of Materials (AIBOM)** with compliance risk findings mapped to three frameworks.
+
+| | |
+|---|---|
+| **61 detection patterns** | OpenAI, Anthropic, Google AI, AWS Bedrock, Cohere, Mistral, Groq, HuggingFace, and 22 more |
+| **10 Chinese AI providers** | 3 BIS Entity-Listed (Zhipu, iFlytek, SenseTime = CRITICAL), 7 data sovereignty flagged |
+| **Agentic AI detection** | CrewAI, AutoGen, LangGraph, Semantic Kernel, MCP |
+| **34 risk rules** | 8 categories with evidence-qualified severity adjustment |
+| **48 compliance controls** | NIST AI RMF (23), ISO 42001 (15), EU AI Act (10) |
+| **Secrets detection** | Hardcoded API keys, Vault, AWS Secrets Manager, dotenv |
+| **Dev tool detection** | Cursor, GitHub Copilot, Claude Code, Aider, TabNine |
+| **Zero dependencies** | Pure Python stdlib. Nothing to install but Python. |
+
+## Output Formats
+
+```bash
+# Table output (default in terminal)
+aibom-scanner scan --path . --format table
+
+# JSON (default when piped)
 aibom-scanner scan --path . --format json > aibom.json
+
+# SARIF for GitHub Code Scanning
+aibom-scanner scan --path . --format sarif > results.sarif
 
 # Fail CI on high/critical findings
 aibom-scanner scan --path . --severity-threshold high
 ```
 
-## Sample output
-
-```
-AIBOM Scanner Results
-──────────────────────────────────────────────────────────────────────
-  Scanned 247 files
-  Found 33 AI SDK detections + 8 dependency detections
-  Providers: openai (12), anthropic (8), deepseek (5), zhipu (3), langchain (3), mcp (2)
-
-Risk Findings (9)
-──────────────────────────────────────────────────────────────────────
-  CRITICAL: 1
-  HIGH: 4
-  MEDIUM: 3
-  LOW: 1
-
-  [CRITICAL] US Entity List violation — prohibited Chinese AI provider
-             Providers: zhipu
-             Frameworks: NIST-GOVERN-1.6, ISO-42001-A.7.3, EU-AI-ACT-ART-5
-
-  [HIGH    ] Chinese AI provider — data sovereignty risk
-             Providers: deepseek
-             Frameworks: NIST-GOVERN-1.6, ISO-42001-A.7.5, EU-AI-ACT-ART-10
-
-  [HIGH    ] AI model usage without governance framework
-             Providers: openai, anthropic, deepseek, zhipu, langchain, mcp
-             Frameworks: NIST-GOVERN-1.1, ISO-42001-5.1, EU-AI-ACT-ART-9
-  ...
-```
-
-## Output formats
-
-| Format | Use case | Flag |
-|--------|----------|------|
-| **table** | Terminal (default) | `--format table` |
-| **json** | Programmatic processing | `--format json` |
-| **sarif** | GitHub Code Scanning | `--format sarif` |
-
 ## GitHub Action
 
-Add AI compliance scanning to your CI pipeline:
+Add AI compliance scanning to every PR:
 
 ```yaml
 # .github/workflows/aibom-scan.yml
@@ -90,9 +77,7 @@ jobs:
           severity-threshold: high
 ```
 
-## What it detects
-
-### AI Providers (30+)
+## AI Providers Detected
 
 | Category | Providers |
 |----------|-----------|
@@ -104,49 +89,58 @@ jobs:
 | **Protocol** | MCP (Model Context Protocol) |
 | **Orchestration** | LangChain, LlamaIndex |
 
-### Risk Categories (8)
+## Risk Categories
 
-| Category | Rules | Example |
-|----------|-------|---------|
+| Category | Rules | Examples |
+|----------|:-----:|---------|
 | Data Privacy | 4 | Missing DPA, data classification, prompt retention |
 | Model Governance | 8 | No inventory, no versioning, supply chain risk |
 | Security | 4 | Hardcoded keys, no input/output validation |
 | Transparency | 3 | No AI disclosure, no decision logging |
 | Accountability | 3 | No risk owner, no incident response plan |
 | Bias & Fairness | 2 | No bias testing, no fairness evaluation |
-| Compliance | 4 | BIS Entity List, data sovereignty, EU AI Act |
+| Export Compliance | 4 | BIS Entity List, data sovereignty, EU AI Act |
 | Agentic AI | 5 | No HITL, no access controls, no observability |
 
-### Compliance Frameworks (3)
+## Compliance Frameworks
 
 | Framework | Controls | Coverage |
-|-----------|----------|----------|
+|-----------|:--------:|----------|
 | **NIST AI RMF** | 23 | GOVERN, MAP, MEASURE, MANAGE functions |
 | **ISO 42001** | 15 | AI management system requirements |
 | **EU AI Act** | 10 | Articles 5-52, high-risk classification |
 
-## How it works
+## How It Works
 
 ```
-Your Codebase → File Walker → AI SDK Detector → Risk Engine → Control Mapper → Output
-                    ↓              ↓                 ↓              ↓
-               git ls-files   61 regex patterns   34 rules      48 controls
-               os.walk        model extraction    8 categories   3 frameworks
-                              dependency scan     evidence qual  gap analysis
-                              secrets detection   consolidation
+Your Codebase
+     │
+     ▼
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌────────────────┐
+│ File Walker  │────▶│  AI SDK      │────▶│ Risk Engine │────▶│ Control Mapper │
+│ git ls-files │     │  Detector    │     │ 34 rules    │     │ 48 controls    │
+│ os.walk      │     │  61 patterns │     │ 8 categories│     │ 3 frameworks   │
+└─────────────┘     └──────────────┘     └─────────────┘     └────────────────┘
+                           │                    │                     │
+                    Detections +          Risk findings         Gap analysis
+                    model names +         with severity         NIST / ISO /
+                    dependencies          qualification         EU AI Act
+                                                                     │
+                                                                     ▼
+                                                              Table / JSON / SARIF
 ```
 
-1. **Walk** — Lists files via `git ls-files` (or `os.walk` for non-git dirs)
-2. **Detect** — Matches 61 patterns for AI imports, API calls, configs, and dependencies
-3. **Classify** — Applies 34 risk rules with severity and evidence qualification
-4. **Consolidate** — Merges related findings into actionable risk groups
-5. **Map** — Maps risks to 48 controls across NIST AI RMF, ISO 42001, and EU AI Act
+## Why This Exists
 
-## Why this exists
+We scanned 5 popular open-source AI repos (470K combined GitHub stars):
 
-We scanned 5 popular open-source AI repos (470K combined GitHub stars). Found 389 AI SDK detections, 116 compliance findings, and zero governance controls fully mapped in any of them. One enterprise security company had a BIS Entity-Listed Chinese AI provider inherited silently through an acquisition.
+- **389** AI SDK detections
+- **116** compliance findings
+- **0** governance controls fully mapped
 
-EU AI Act enforcement starts August 2026. Enterprise buyers are asking AI governance questions in every procurement questionnaire. If you don't know what AI SDKs are in your codebase, you can't answer them.
+One enterprise security company had a **BIS Entity-Listed Chinese AI provider** inherited silently through an acquisition.
+
+EU AI Act enforcement starts **August 2026**. If you don't know what AI SDKs are in your codebase, you can't govern them.
 
 ## Contributing
 
@@ -163,4 +157,6 @@ Apache-2.0. See [LICENSE](LICENSE).
 
 ---
 
-Built by [SaaSVista](https://saasvista.io) — AI Risk & Compliance Copilot.
+<p align="center">
+  Built by <a href="https://saasvista.io">SaaSVista</a> — AI Risk & Compliance Copilot
+</p>

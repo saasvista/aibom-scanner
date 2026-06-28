@@ -37,7 +37,7 @@ AI_SDK_PATTERNS = [
     ("huggingface", "transformers", r"(?:Auto(?:Model|Tokenizer)(?:ForCausalLM|ForSeq2Seq|ForSequenceClassification|ForTokenClassification|ForQuestionAnswering|\.from_pretrained))", "import"),
     ("huggingface", "transformers", r"(?:from\s+transformers\b.*import.*pipeline|transformers\.pipeline\(|pipeline\(\s*[\"'](?:text-|token-|question-|summarization|translation|fill-mask|image-|audio-|zero-shot|feature-extraction|sentiment))", "api_call"),
     # Cohere
-    ("cohere", "cohere", r"(?:from\s+cohere|import\s+cohere|require\(['\"]cohere['\"])", "import"),
+    ("cohere", "cohere", r"(?m)(?:from\s+cohere\b|^\s*import\s+cohere\b|require\(['\"]cohere['\"])", "import"),
     # LangChain
     ("langchain", "langchain", r"(?:from\s+langchain|import\s+langchain|@langchain)", "import"),
     # LlamaIndex

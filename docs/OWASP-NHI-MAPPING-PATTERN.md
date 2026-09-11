@@ -22,10 +22,18 @@ aibom-scanner already maps scan findings to framework controls with a coverage m
 
 1. Add an `OWASP_NHI_TOP10` table to `control_mapper.py` with ids `OWASP-NHI-1` .. `OWASP-NHI-10` and the official 2025 titles.
 2. Register it in `ALL_FRAMEWORKS`.
-3. Append `OWASP-NHI-*` ids to `framework_refs` on the risk rules that produce NHI evidence.
+3. Append `OWASP-NHI-*` ids to `framework_refs` on the risk rules that produce NHI evidence. Edit per rule: `risk_engine.py:146` and `:155` carry identical ref lists, so a string replace links both.
 4. Add tests: table present, ids resolve, `MAPPED` / `PARTIAL` / `GAP` behave for NHI controls.
 
-No new models, formatters, or CLI surface. JSON, SARIF and table output pick up the new framework through `control_mappings`.
+No new models or CLI surface. Output reach differs by format (checked 2026-09-11 by running steps 1-3 in a throwaway copy; 207 existing tests still pass):
+
+| Format | What shows | NHI result |
+|---|---|---|
+| JSON | full `control_mappings` | all 10 NHI controls with `MAPPED` / `PARTIAL` / `GAP` |
+| SARIF | no `control_mappings`; rule `tags` from `framework_refs` (`formatters/sarif_fmt.py:42`) | linked ids only, e.g. `OWASP-NHI-2`; `GAP` controls absent |
+| Table | no control-mapping section; `Frameworks:` shows the first 3 `framework_refs` (`formatters/table_fmt.py:50`) | an appended NHI id is not shown |
+
+Showing NHI coverage in SARIF or table output needs formatter work.
 
 ## 3. Candidate links from existing rules
 

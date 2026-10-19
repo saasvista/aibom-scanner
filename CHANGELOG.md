@@ -16,6 +16,11 @@
   `LangChain.OpenAI==0.2` were not detected in `requirements.txt`, `pyproject.toml` or `Pipfile`, because
   only the hyphenated name was known. Names are now lowercased and runs of `-`, `_` and `.` are read as one
   `-`, and the reported package is the normalized name. `package.json` names are not changed.
+- **TOML manifests are read only in their dependency sections.** `pyproject.toml` and `Pipfile` were scanned
+  whole, so `name = "openai"` under `[project]`, `[project.scripts]` or `[project.urls]` entries, and
+  `[build-system]` requires, were reported as dependencies. Only `[project]` `dependencies`,
+  `[project.optional-dependencies]`, `[dependency-groups]`, Poetry dependency tables and Pipfile `[packages]`
+  and `[dev-packages]` are read now.
 
 ## 1.3.0 (2026-10-13)
 

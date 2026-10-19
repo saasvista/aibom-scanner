@@ -209,6 +209,14 @@ class TestScanDependencies:
         detections = scan_dependencies(name, content)
         assert [(d["package"], d["version"]) for d in detections] == expected
 
+    @pytest.mark.parametrize("name,content,expected", [
+        ("pyproject.toml", '[tool.poetry.dependencies]\nopenai = "latest"\n', [("openai", None)]),
+        ("Pipfile", '[packages]\nanthropic = "openai"\n', [("anthropic", None)]),
+    ])
+    def test_toml_key_names_the_package_in_key_sections(self, name, content, expected):
+        detections = scan_dependencies(name, content)
+        assert [(d["package"], d["version"]) for d in detections] == expected
+
     def test_pyproject_toml_matches_requirements_txt(self):
         """The same requirement must be reported the same way in every manifest."""
         requirement = "openai>=1.30.0"

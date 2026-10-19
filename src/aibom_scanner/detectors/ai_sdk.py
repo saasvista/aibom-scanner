@@ -457,12 +457,8 @@ def _toml_dependencies(content: str) -> list[tuple[str, str | None]]:
         ):
             for m in _TOML_ENTRY.finditer(body):
                 value = m.group("dq") if m.group("dq") is not None else m.group("sq")
-                requirement = _parse_requirement(value)
-                if requirement:
-                    candidates.append((offset + m.start(), *requirement))
-                else:
-                    # A key with a version constraint: the key names the package.
-                    candidates.append((offset + m.start(), m.group("key").lower(), _version_from_spec(value)))
+                # The key names the package; the value is a version constraint.
+                candidates.append((offset + m.start(), m.group("key").lower(), _version_from_spec(value)))
             for m in _TOML_TABLE.finditer(body):
                 for _, _, value in _quoted_spans(m.group("body")):
                     if value.startswith(_CONSTRAINT_PREFIXES):

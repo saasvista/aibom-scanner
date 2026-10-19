@@ -1,5 +1,7 @@
 """Tests for AI SDK detection patterns."""
 
+import pytest
+
 from aibom_scanner.detectors.ai_sdk import scan_file, scan_dependencies, should_scan_file, Detection
 
 
@@ -176,10 +178,49 @@ class TestScanDependencies:
         content = '[project]\nname = "app"\ndescription = "Uses Anthropic models"\n'
         assert scan_dependencies("pyproject.toml", content) == []
 
+    @pytest.mark.parametrize("content", [
+        '[project]\nname = "openai"\n',
+        '[tool.poetry]\nname = "langchain"\n',
+        '[project.scripts]\nmcp = "mycli.main:run"\n',
+        '[project.urls]\nopenai = "https://x"\n',
+        '[build-system]\nrequires = ["openai>=1.0"]\n',
+    ])
+    def test_pyproject_toml_ignores_non_dependency_sections(self, content):
+        assert scan_dependencies("pyproject.toml", content) == []
+
+    @pytest.mark.parametrize("name,content,expected", [
+        ("pyproject.toml", '[project]\nname = "openai"\ndependencies = ["anthropic>=0.40"]\n',
+         [("anthropic", "0.40")]),
+        ("pyproject.toml",
+         '[project]\ndependencies = [\n  "openai[datalib]>=1.30",\n  "requests",\n]\n\n[project.urls]\nopenai = "https://x"\n',
+         [("openai", "1.30")]),
+        ("pyproject.toml", '[project.optional-dependencies]\nai = ["langchain-openai>=0.1"]\n',
+         [("langchain-openai", "0.1")]),
+        ("pyproject.toml", '[dependency-groups]\ndev = ["openai>=1.0", {include-group = "test"}]\n',
+         [("openai", "1.0")]),
+        ("pyproject.toml", '[tool.poetry]\nname = "langchain"\n\n[tool.poetry.dependencies]\nopenai = "^1.30"\n',
+         [("openai", "1.30")]),
+        ("pyproject.toml", '[tool.poetry.group.ai.dependencies]\nanthropic = { version = "^0.40" }\n',
+         [("anthropic", "0.40")]),
+        ("Pipfile", '[packages]\nopenai = "==1.30.0"\n\n[scripts]\nmcp = "python -m mcp"\n',
+         [("openai", "1.30.0")]),
+    ])
+    def test_toml_reads_dependency_sections(self, name, content, expected):
+        detections = scan_dependencies(name, content)
+        assert [(d["package"], d["version"]) for d in detections] == expected
+
+    @pytest.mark.parametrize("name,content,expected", [
+        ("pyproject.toml", '[tool.poetry.dependencies]\nopenai = "latest"\n', [("openai", None)]),
+        ("Pipfile", '[packages]\nanthropic = "openai"\n', [("anthropic", None)]),
+    ])
+    def test_toml_key_names_the_package_in_key_sections(self, name, content, expected):
+        detections = scan_dependencies(name, content)
+        assert [(d["package"], d["version"]) for d in detections] == expected
+
     def test_pyproject_toml_matches_requirements_txt(self):
         """The same requirement must be reported the same way in every manifest."""
         requirement = "openai>=1.30.0"
         from_txt = scan_dependencies("requirements.txt", requirement + "\n")
-        from_toml = scan_dependencies("pyproject.toml", f'dependencies = ["{requirement}"]\n')
+        from_toml = scan_dependencies("pyproject.toml", f'[project]\ndependencies = ["{requirement}"]\n')
         keys = ("package", "version", "provider")
         assert [{k: d[k] for k in keys} for d in from_toml] == [{k: d[k] for k in keys} for d in from_txt]

@@ -400,38 +400,72 @@ def _parse_requirement(value: str) -> tuple[str, str | None] | None:
     return match.group("name").lower(), _version_from_spec(match.group("spec") or "")
 
 
+_TOML_HEADER = re.compile(r"(?m)^[ \t]*(\[\[?)\s*([^\[\]\n]+?)\s*\]\]?[ \t]*(?:#.*)?$")
+_PROJECT_DEPENDENCIES = re.compile(r"(?m)^[ \t]*dependencies\s*=\s*\[")
+_ARRAY_SECTIONS = ("project.optional-dependencies", "dependency-groups")
+_KEY_SECTIONS = (
+    "tool.poetry.dependencies", "tool.poetry.dev-dependencies", "packages", "dev-packages",
+)
+_INLINE_TABLE = re.compile(r"\{[^}\n]*\}")
+
+
+def _toml_sections(content: str) -> list[tuple[str, int, str]]:
+    """(header name, body offset, body) for each table. `[[x]]` tables get an empty name."""
+    headers = list(_TOML_HEADER.finditer(content))
+    sections = []
+    for i, m in enumerate(headers):
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(content)
+        name = m.group(2) if m.group(1) == "[" else ""
+        sections.append((name, m.end(), content[m.end():end]))
+    return sections
+
+
+def _array_after(body: str, start: int) -> str:
+    """Text from start to the closing `]`, skipping `]` inside quoted strings."""
+    quote = None
+    for i in range(start, len(body)):
+        ch = body[i]
+        if quote:
+            if ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+        elif ch == "]":
+            return body[start:i]
+    return body[start:]
+
+
 def _toml_dependencies(content: str) -> list[tuple[str, str | None]]:
-    """(package, version) declared in a TOML manifest, in the order it appears."""
-    entries = list(_TOML_ENTRY.finditer(content))
-    entry_values = [
-        m.span("dq") if m.group("dq") is not None else m.span("sq")
-        for m in entries
-    ]
+    """(package, version) declared in the dependency sections of a TOML manifest, in file order."""
     candidates: list[tuple[int, str, str | None]] = []
 
-    for m in entries:
-        value = m.group("dq") if m.group("dq") is not None else m.group("sq")
-        requirement = _parse_requirement(value)
-        if requirement:
-            candidates.append((m.start(), *requirement))
-        else:
-            # A key with a version constraint: the key names the package.
-            candidates.append((m.start(), m.group("key").lower(), _version_from_spec(value)))
+    def add_requirements(offset: int, text: str) -> None:
+        for start, _, value in _quoted_spans(text):
+            requirement = _parse_requirement(value)
+            if requirement:
+                candidates.append((offset + start, *requirement))
 
-    for m in _TOML_TABLE.finditer(content):
-        for _, _, value in _quoted_spans(m.group("body")):
-            if value.startswith(_CONSTRAINT_PREFIXES):
-                candidates.append((m.start(), m.group("key").lower(), _version_from_spec(value)))
-                break
-        else:
-            candidates.append((m.start(), m.group("key").lower(), None))
-
-    for start, end, value in _quoted_spans(content):
-        if any(vstart <= start < vend for vstart, vend in entry_values):
-            continue  # the value of a key is a version constraint, not a requirement
-        requirement = _parse_requirement(value)
-        if requirement:
-            candidates.append((start, *requirement))
+    for name, offset, body in _toml_sections(content):
+        if name in _ARRAY_SECTIONS:
+            add_requirements(offset, _INLINE_TABLE.sub(lambda m: " " * len(m.group(0)), body))
+        elif name == "project":
+            m = _PROJECT_DEPENDENCIES.search(body)
+            if m:
+                add_requirements(offset + m.end(), _array_after(body, m.end()))
+        elif name in _KEY_SECTIONS or (
+            name.startswith("tool.poetry.group.") and name.endswith(".dependencies")
+        ):
+            for m in _TOML_ENTRY.finditer(body):
+                value = m.group("dq") if m.group("dq") is not None else m.group("sq")
+                # The key names the package; the value is a version constraint.
+                candidates.append((offset + m.start(), m.group("key").lower(), _version_from_spec(value)))
+            for m in _TOML_TABLE.finditer(body):
+                for _, _, value in _quoted_spans(m.group("body")):
+                    if value.startswith(_CONSTRAINT_PREFIXES):
+                        candidates.append((offset + m.start(), m.group("key").lower(), _version_from_spec(value)))
+                        break
+                else:
+                    candidates.append((offset + m.start(), m.group("key").lower(), None))
 
     found: list[tuple[str, str | None]] = []
     seen: set[tuple[str, str | None]] = set()

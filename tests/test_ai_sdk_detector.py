@@ -139,6 +139,34 @@ class TestScanDependencies:
         assert {d["package"] for d in detections} == {"langchain-openai"}
         assert "openai" not in {d["provider"] for d in detections}
 
+    def test_requirements_txt_underscore_name_is_normalized(self):
+        detections = scan_dependencies("requirements.txt", "langchain_openai>=0.1\n")
+        assert [(d["package"], d["version"]) for d in detections] == [("langchain-openai", "0.1")]
+
+    def test_requirements_txt_mixed_case_and_dot_name_is_normalized(self):
+        detections = scan_dependencies("requirements.txt", "LangChain.OpenAI==0.2\n")
+        assert [(d["package"], d["version"]) for d in detections] == [("langchain-openai", "0.2")]
+
+    def test_pyproject_toml_underscore_name_is_normalized(self):
+        content = '[project]\ndependencies = ["langchain_openai>=0.1"]\n'
+        detections = scan_dependencies("pyproject.toml", content)
+        assert [(d["package"], d["version"]) for d in detections] == [("langchain-openai", "0.1")]
+
+    def test_poetry_underscore_key_is_normalized(self):
+        content = '[tool.poetry.dependencies]\nllama_index = "^0.10"\n'
+        detections = scan_dependencies("pyproject.toml", content)
+        assert [(d["package"], d["version"]) for d in detections] == [("llama-index", "0.10")]
+
+    def test_package_json_scoped_name_is_unchanged(self):
+        content = '{"dependencies": {"@langchain/openai": "^0.1"}}'
+        detections = scan_dependencies("package.json", content)
+        assert [(d["package"], d["version"]) for d in detections] == [("@langchain/openai", "0.1")]
+
+    def test_package_json_names_are_not_normalized(self):
+        """npm names are not PEP 503 names: an underscore name is a different package."""
+        content = '{"dependencies": {"langchain_openai": "1.0"}}'
+        assert scan_dependencies("package.json", content) == []
+
     def test_pyproject_toml_unrelated_package_name_is_not_a_substring(self):
         content = '[project]\ndependencies = ["mcp-server>=1.0.0"]\n'
         detections = scan_dependencies("pyproject.toml", content)

@@ -387,6 +387,11 @@ def _version_from_spec(spec: str) -> str | None:
     return match.group(0) if match else None
 
 
+def _normalize_python_name(name: str) -> str:
+    """Normalize a Python package name per PEP 503: lowercase, runs of -_. become one -."""
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
 def _parse_requirement(value: str) -> tuple[str, str | None] | None:
     """(package, version) for a PEP 508 requirement string, else None."""
     match = _REQUIREMENT.match(value.split(";", 1)[0].strip())
@@ -451,7 +456,7 @@ def scan_dependencies(file_path: str, content: str) -> list[dict]:
             # Parse: package==version, package>=version, package
             match = re.match(r'^([a-zA-Z0-9\-_\.]+)\s*(?:[><=!~]+\s*([0-9][a-zA-Z0-9\.\-\*]*))?', line)
             if match:
-                pkg = match.group(1).lower()
+                pkg = _normalize_python_name(match.group(1))
                 ver = match.group(2)
                 if pkg in DEPENDENCY_MAP:
                     results.append({"package": pkg, "version": ver, "provider": DEPENDENCY_MAP[pkg], "source_file": file_path})
@@ -474,7 +479,8 @@ def scan_dependencies(file_path: str, content: str) -> list[dict]:
     elif filename in ("Pipfile", "pyproject.toml"):
         # TOML: parse the requirement, so the package name is matched whole and
         # the version comes from the requirement instead of the line.
-        for pkg, ver in _toml_dependencies(content):
+        for raw_pkg, ver in _toml_dependencies(content):
+            pkg = _normalize_python_name(raw_pkg)
             if pkg in DEPENDENCY_MAP:
                 results.append({
                     "package": pkg,

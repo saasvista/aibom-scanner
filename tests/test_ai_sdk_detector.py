@@ -104,3 +104,54 @@ class TestScanDependencies:
         detections = scan_dependencies("pyproject.toml", content)
         providers = {d["provider"] if isinstance(d, dict) else d.provider for d in detections}
         assert "openai" in providers
+
+    def test_pyproject_toml_reports_pinned_version(self):
+        content = '[project]\ndependencies = ["openai>=1.30.0", "anthropic==0.40.0"]\n'
+        detections = scan_dependencies("pyproject.toml", content)
+        found = {(d["package"], d["version"]) for d in detections}
+        assert ("openai", "1.30.0") in found
+        assert ("anthropic", "0.40.0") in found
+
+    def test_pyproject_toml_poetry_style_version(self):
+        content = '[tool.poetry.dependencies]\nopenai = "^1.30"\n'
+        detections = scan_dependencies("pyproject.toml", content)
+        assert [(d["package"], d["version"]) for d in detections] == [("openai", "1.30")]
+
+    def test_pyproject_toml_poetry_inline_table(self):
+        content = '[tool.poetry.dependencies]\nopenai = { version = "^1.30", optional = true }\n'
+        detections = scan_dependencies("pyproject.toml", content)
+        assert [(d["package"], d["version"]) for d in detections] == [("openai", "1.30")]
+
+    def test_pyproject_toml_requirement_with_environment_marker(self):
+        content = '[project]\ndependencies = ["openai>=1.0 ; python_version < \'3.9\'"]\n'
+        detections = scan_dependencies("pyproject.toml", content)
+        assert [(d["package"], d["version"]) for d in detections] == [("openai", "1.0")]
+
+    def test_pipfile_version(self):
+        content = '[packages]\nopenai = "==1.30.0"\n'
+        detections = scan_dependencies("Pipfile", content)
+        assert [(d["package"], d["version"]) for d in detections] == [("openai", "1.30.0")]
+
+    def test_pyproject_toml_package_name_is_not_a_substring(self):
+        """`langchain-openai` is one package, not `langchain` and `openai`."""
+        content = '[project]\ndependencies = ["langchain-openai>=0.1.0"]\n'
+        detections = scan_dependencies("pyproject.toml", content)
+        assert {d["package"] for d in detections} == {"langchain-openai"}
+        assert "openai" not in {d["provider"] for d in detections}
+
+    def test_pyproject_toml_unrelated_package_name_is_not_a_substring(self):
+        content = '[project]\ndependencies = ["mcp-server>=1.0.0"]\n'
+        detections = scan_dependencies("pyproject.toml", content)
+        assert detections == []
+
+    def test_pyproject_toml_ignores_prose(self):
+        content = '[project]\nname = "app"\ndescription = "Uses Anthropic models"\n'
+        assert scan_dependencies("pyproject.toml", content) == []
+
+    def test_pyproject_toml_matches_requirements_txt(self):
+        """The same requirement must be reported the same way in every manifest."""
+        requirement = "openai>=1.30.0"
+        from_txt = scan_dependencies("requirements.txt", requirement + "\n")
+        from_toml = scan_dependencies("pyproject.toml", f'dependencies = ["{requirement}"]\n')
+        keys = ("package", "version", "provider")
+        assert [{k: d[k] for k in keys} for d in from_toml] == [{k: d[k] for k in keys} for d in from_txt]

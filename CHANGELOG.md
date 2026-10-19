@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **TOML manifests are parsed instead of scanned for package name substrings.** `pyproject.toml` and
+  `Pipfile` were read by looking for each known package name as a substring of every line, so
+  `dependencies = ["langchain-openai>=0.1.0"]` was reported as three dependencies — `langchain-openai`,
+  `langchain` and `openai` — and a provider the project never declared reached the report and the risk
+  rules. A package name is now matched whole. The version is read from the requirement instead of the
+  line, so a TOML dependency reports its pinned version like the equivalent `requirements.txt` or
+  `package.json` entry; it was always `null` before. PEP 508 requirement strings, Poetry and Pipfile
+  version constraints, inline tables, extras and environment markers are handled.
+
 ## 1.3.0 (2026-10-13)
 
 Per-server MCP inventory.

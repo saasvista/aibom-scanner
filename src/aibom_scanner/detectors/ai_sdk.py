@@ -349,6 +349,95 @@ def _extract_xml_attr(attrs: str, name: str) -> str | None:
     return match.group(1) if match else None
 
 
+# --- TOML manifests (pyproject.toml, Pipfile) ---
+# A dependency is declared in one of two shapes:
+#   dependencies = ["openai>=1.30.0"]   a PEP 508 requirement string
+#   openai = "^1.30"                     a key whose value is a version constraint
+# The package name is the whole token: "langchain-openai" is one package, not
+# "langchain" and "openai". The version belongs to the requirement, not to the
+# line it happens to sit on, so it is read from the requirement itself.
+_REQUIREMENT = re.compile(
+    r"^(?P<name>[A-Za-z][A-Za-z0-9._-]*)"
+    r"(?:\[[^\]]*\])?"
+    r"(?P<spec>(?:===|[=!<>~]=?)[^;\s]*)?$"
+)
+_TOML_ENTRY = re.compile(
+    r"""(?m)^[ \t]*(?P<key>[A-Za-z][A-Za-z0-9._-]*)\s*=\s*(?:"(?P<dq>[^"]*)"|'(?P<sq>[^']*)')"""
+)
+_TOML_TABLE = re.compile(
+    r"""(?m)^[ \t]*(?P<key>[A-Za-z][A-Za-z0-9._-]*)\s*=\s*\{(?P<body>[^}]*)\}"""
+)
+_QUOTED = re.compile(r"""(?:"(?P<dq>[^"]*)"|'(?P<sq>[^']*)')""")
+_TOML_VERSION = re.compile(r"[0-9][A-Za-z0-9.\-*]*")
+_CONSTRAINT_PREFIXES = ("=", ">", "<", "!", "~", "^")
+
+
+def _quoted_spans(text: str) -> list[tuple[int, int, str]]:
+    """(start, end, contents) of every quoted string in the text."""
+    spans = []
+    for m in _QUOTED.finditer(text):
+        group = "dq" if m.group("dq") is not None else "sq"
+        spans.append((m.start(group), m.end(group), m.group(group)))
+    return spans
+
+
+def _version_from_spec(spec: str) -> str | None:
+    """The version in a constraint such as ">=1.30" or "^1.30"."""
+    match = _TOML_VERSION.search(spec or "")
+    return match.group(0) if match else None
+
+
+def _parse_requirement(value: str) -> tuple[str, str | None] | None:
+    """(package, version) for a PEP 508 requirement string, else None."""
+    match = _REQUIREMENT.match(value.split(";", 1)[0].strip())
+    if not match:
+        return None
+    return match.group("name").lower(), _version_from_spec(match.group("spec") or "")
+
+
+def _toml_dependencies(content: str) -> list[tuple[str, str | None]]:
+    """(package, version) declared in a TOML manifest, in the order it appears."""
+    entries = list(_TOML_ENTRY.finditer(content))
+    entry_values = [
+        m.span("dq") if m.group("dq") is not None else m.span("sq")
+        for m in entries
+    ]
+    candidates: list[tuple[int, str, str | None]] = []
+
+    for m in entries:
+        value = m.group("dq") if m.group("dq") is not None else m.group("sq")
+        requirement = _parse_requirement(value)
+        if requirement:
+            candidates.append((m.start(), *requirement))
+        else:
+            # A key with a version constraint: the key names the package.
+            candidates.append((m.start(), m.group("key").lower(), _version_from_spec(value)))
+
+    for m in _TOML_TABLE.finditer(content):
+        for _, _, value in _quoted_spans(m.group("body")):
+            if value.startswith(_CONSTRAINT_PREFIXES):
+                candidates.append((m.start(), m.group("key").lower(), _version_from_spec(value)))
+                break
+        else:
+            candidates.append((m.start(), m.group("key").lower(), None))
+
+    for start, end, value in _quoted_spans(content):
+        if any(vstart <= start < vend for vstart, vend in entry_values):
+            continue  # the value of a key is a version constraint, not a requirement
+        requirement = _parse_requirement(value)
+        if requirement:
+            candidates.append((start, *requirement))
+
+    found: list[tuple[str, str | None]] = []
+    seen: set[tuple[str, str | None]] = set()
+    for _, name, version in sorted(candidates, key=lambda c: c[0]):
+        if (name, version) in seen:
+            continue
+        seen.add((name, version))
+        found.append((name, version))
+    return found
+
+
 def scan_dependencies(file_path: str, content: str) -> list[dict]:
     """Scan a dependency file for AI SDK packages. Returns list of dicts with package, version, provider, source_file."""
     results = []
@@ -383,13 +472,16 @@ def scan_dependencies(file_path: str, content: str) -> list[dict]:
             pass
 
     elif filename in ("Pipfile", "pyproject.toml"):
-        # Simple TOML-like parsing for package names
-        for line in content.split("\n"):
-            line = line.strip()
-            for pkg in DEPENDENCY_MAP:
-                if pkg in line.lower():
-                    ver_match = re.search(r'["\']([0-9][a-zA-Z0-9\.\-\*]*)["\']', line)
-                    results.append({"package": pkg, "version": ver_match.group(1) if ver_match else None, "provider": DEPENDENCY_MAP[pkg], "source_file": file_path})
+        # TOML: parse the requirement, so the package name is matched whole and
+        # the version comes from the requirement instead of the line.
+        for pkg, ver in _toml_dependencies(content):
+            if pkg in DEPENDENCY_MAP:
+                results.append({
+                    "package": pkg,
+                    "version": ver,
+                    "provider": DEPENDENCY_MAP[pkg],
+                    "source_file": file_path,
+                })
 
     elif filename == "go.mod":
         for line in content.split("\n"):

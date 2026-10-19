@@ -12,6 +12,10 @@
   line, so a TOML dependency reports its pinned version like the equivalent `requirements.txt` or
   `package.json` entry; it was always `null` before. PEP 508 requirement strings, Poetry and Pipfile
   version constraints, inline tables, extras and environment markers are handled.
+- **Python package names are normalized (PEP 503) before lookup.** `langchain_openai>=0.1` and
+  `LangChain.OpenAI==0.2` were not detected in `requirements.txt`, `pyproject.toml` or `Pipfile`, because
+  only the hyphenated name was known. Names are now lowercased and runs of `-`, `_` and `.` are read as one
+  `-`, and the reported package is the normalized name. `package.json` names are not changed.
 
 ## 1.3.0 (2026-10-13)
 

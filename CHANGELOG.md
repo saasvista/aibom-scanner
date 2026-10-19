@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.3.1 (2026-10-19)
+
+Python manifest dependency accuracy.
 
 ### Fixed
 

@@ -63,7 +63,8 @@ def scan_tool_imports(rel_path: str, content: str) -> list[dict]:
     def record(fq: str, line: int) -> None:
         classes = _classes_for(fq)
         if classes and fq not in found:
-            found[fq] = {"tool": fq, "classes": list(classes), "source": "import", "file": rel_path, "line": line}
+            found[fq] = {"tool": fq, "classes": list(classes), "source": "import", "file": rel_path, "line": line,
+                         "referenced": False}
 
     def resolve(node: ast.AST) -> str | None:
         if isinstance(node, ast.Name):
@@ -78,7 +79,13 @@ def scan_tool_imports(rel_path: str, content: str) -> list[dict]:
         if root in modules and ("module", root) not in found:
             found[("module", root)] = {
                 "tool": root, "classes": list(modules[root]), "source": "import", "file": rel_path, "line": line,
+                "referenced": False,
             }
+
+    def mark_referenced(fq: str) -> None:
+        for key in (fq, ("module", fq.split(".")[0])):
+            if key in found:
+                found[key]["referenced"] = True
 
     try:
         for node in ast.walk(tree):
@@ -92,11 +99,14 @@ def scan_tool_imports(rel_path: str, content: str) -> list[dict]:
                 for a in node.names:
                     imports[a.asname or a.name] = f"{node.module}.{a.name}"
                     record(f"{node.module}.{a.name}", node.lineno)
+        # A use is any name or attribute outside an import statement that resolves to an imported tool.
         for node in ast.walk(tree):
-            if isinstance(node, ast.Attribute):
+            if isinstance(node, (ast.Name, ast.Attribute)):
                 fq = resolve(node)
                 if fq:
-                    record(fq, node.lineno)
+                    if isinstance(node, ast.Attribute):
+                        record(fq, node.lineno)
+                    mark_referenced(fq)
     except RecursionError:
         return []
     return list(found.values())

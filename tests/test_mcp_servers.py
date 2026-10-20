@@ -301,7 +301,13 @@ class TestPinned:
             ("docker", ["run", "-i", "ghcr.io/o/img:latest"], False),
             ("docker", ["run", "-i", "ghcr.io/o/img"], False),
             ("docker", ["run", "img@sha256:" + "a" * 64], True),
-            ("docker", ["run", "-p", "5000:80", "localhost:5000/img"], False),
+            ("docker", ["run", "-p", "5000:80", "localhost:5000/img"], None),
+            ("docker", ["run", "-i", "--rm", "my-mcp-server"], None),
+            ("docker", ["run", "-i", "--rm", "my-mcp-server:dev"], None),
+            ("docker", ["run", "-i", "--rm", "mcp/github"], False),
+            ("npx", ["tsx", "./server.ts"], None),
+            ("npx", ["-y", "tsx@4.19.0", "src/server.ts"], None),
+            ("npx", ["-y", "@modelcontextprotocol/server-filesystem", "/data"], False),
             ("node", ["server.js"], None),
             ("npx", ["-y", "<dynamic>"], None),
         ],
@@ -436,8 +442,8 @@ class TestFailClosedSpec:
         [
             ("npx", ["-y", "pkg@1.2.3"], "pkg@1.2.3", True),
             ("uvx", ["pkg"], "pkg", False),
-            ("docker", ["run", "-i", "--rm", "image:tag"], "image:tag", True),
-            ("docker", ["run", "-e", "K=v", "-v", "/a:/b", "image:tag"], "image:tag", True),
+            ("docker", ["run", "-i", "--rm", "org/image:tag"], "org/image:tag", True),
+            ("docker", ["run", "-e", "K=v", "-v", "/a:/b", "org/image:tag"], "org/image:tag", True),
         ],
     )
     def test_known_forms_still_resolve(self, command, args, spec, pinned):

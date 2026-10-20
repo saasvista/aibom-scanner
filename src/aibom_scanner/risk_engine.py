@@ -653,7 +653,7 @@ def _unpinned_mcp_risk(mcp_servers: list[dict]) -> dict | None:
 def _code_execution_risk(tool_capabilities: list[dict]) -> dict | None:
     lines = [
         f"{t['tool'].rsplit('.', 1)[-1]} {t['file']}:{t['line']}"
-        for t in tool_capabilities if "code_execution" in t["classes"]
+        for t in tool_capabilities if "code_execution" in t["classes"] and t.get("referenced", True)
     ]
     if not lines:
         return None

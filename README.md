@@ -24,6 +24,31 @@ which NIST, ISO, EU AI Act and OWASP items each finding points at.
 It is a static scan. It makes no network calls, uses no language model, and has zero dependencies. It stores no
 values from MCP configs (key names only) and masks key-shaped strings in the code lines it quotes.
 
+## How It Works
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saasvista/aibom-scanner/main/docs/pipeline.svg" alt="aibom-scanner pipeline: a scan walks the repo, runs the detectors, the risk engine and the control mapper, then writes a table, JSON or SARIF report" width="720">
+</p>
+
+```
+Your codebase
+     |
+     v
+File walker (git ls-files, os.walk)
+     |
+     v
+Detectors: AI SDKs and models (70 patterns), MCP servers, agent tools, secrets
+     |
+     v
+Risk engine: 34 rules in 8 categories, plus 3 evidence-built findings
+     |
+     v
+Control mapper: 49 controls in 3 frameworks, 20 OWASP items
+     |
+     v
+Table / JSON / SARIF
+```
+
 ## Quick Start
 
 ```bash
@@ -263,31 +288,6 @@ unpinned MCP server and the agent tool that can execute code.
 | **EU AI Act** | 11 | Articles 5-52, high-risk classification |
 | **OWASP LLM Top 10 (2025)** | 10 | LLM01 to LLM10; 5 reachable by a finding |
 | **OWASP Agentic Top 10 (2026)** | 10 | ASI01 to ASI10; 6 reachable by a finding |
-
-## How It Works
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/saasvista/aibom-scanner/main/docs/pipeline.svg" alt="aibom-scanner pipeline: a scan walks the repo, runs the detectors, the risk engine and the control mapper, then writes a table, JSON or SARIF report" width="720">
-</p>
-
-```
-Your codebase
-     |
-     v
-File walker (git ls-files, os.walk)
-     |
-     v
-Detectors: AI SDKs and models (70 patterns), MCP servers, agent tools, secrets
-     |
-     v
-Risk engine: 34 rules in 8 categories, plus 3 evidence-built findings
-     |
-     v
-Control mapper: 49 controls in 3 frameworks, 20 OWASP items
-     |
-     v
-Table / JSON / SARIF
-```
 
 ## Why This Exists
 

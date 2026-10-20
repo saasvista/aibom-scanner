@@ -266,6 +266,10 @@ unpinned MCP server and the agent tool that can execute code.
 
 ## How It Works
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/saasvista/aibom-scanner/main/docs/pipeline.svg" alt="aibom-scanner pipeline: a scan walks the repo, runs the detectors, the risk engine and the control mapper, then writes a table, JSON or SARIF report" width="720">
+</p>
+
 ```
 Your codebase
      |

@@ -228,9 +228,14 @@ def server_package(server: dict) -> str | None:
         head, sep, tag = spec.rpartition(":")
         return head if sep and "/" not in tag else spec
     if cmd == "npx":
-        name, sep, _ = spec[1:].partition("@") if spec.startswith("@") else spec.partition("@")
-        return ("@" if spec.startswith("@") else "") + name
+        return _npx_name(spec)
     return spec.split("==", 1)[0].split("@", 1)[0]
+
+
+def _npx_name(spec: str) -> str:
+    """npx package name with the version stripped (`@scope/pkg@1.2` -> `@scope/pkg`)."""
+    name, _, _ = spec[1:].partition("@") if spec.startswith("@") else spec.partition("@")
+    return ("@" if spec.startswith("@") else "") + name
 
 
 def _versioned(spec: str, seps: tuple[str, ...]) -> bool:
@@ -242,8 +247,24 @@ def _versioned(spec: str, seps: tuple[str, ...]) -> bool:
     return False
 
 
+# npx packages that run a script from the repo (`npx tsx ./server.ts`): the server code is local, not a package.
+_NPX_SCRIPT_RUNNERS = {"tsx", "ts-node", "node"}
+_LOCAL_REGISTRIES = ("localhost/", "localhost:", "127.0.0.1/", "127.0.0.1:")
+
+
+def _local_docker_image(spec: str) -> bool:
+    """An image built locally: no registry or namespace (`my-server`), or a localhost registry.
+
+    Docker Hub official images also have no namespace, but MCP server images are published under one
+    (`mcp/github`, `ghcr.io/...`)."""
+    return "/" not in spec.split("@", 1)[0] or spec.startswith(_LOCAL_REGISTRIES)
+
+
 def compute_pinned(command: str | None, args: list) -> bool | None:
-    """True/False for npx, uvx, pipx run and docker run; None for everything else. Runs on the original args."""
+    """True/False for npx, uvx, pipx run and docker run; None for everything else. Runs on the original args.
+
+    None also for a local script run through npx (`npx tsx ./server.ts`) and a locally built docker image:
+    there is no published version to pin."""
     if not command or any(not isinstance(a, str) for a in args):
         return None
     cmd = _cmd_name(command)
@@ -252,6 +273,8 @@ def compute_pinned(command: str | None, args: list) -> bool | None:
         return None
     spec = args[idx]
     if cmd == "npx":
+        if _npx_name(spec) in _NPX_SCRIPT_RUNNERS:
+            return None
         return _versioned(spec, ("@",))
     if cmd == "uvx":
         return _versioned(spec, ("==", "@"))
@@ -259,6 +282,8 @@ def compute_pinned(command: str | None, args: list) -> bool | None:
         return _versioned(spec, ("==",))
     if "@sha256:" in spec:
         return True
+    if _local_docker_image(spec):
+        return None
     tag = spec.rsplit(":", 1)[1] if ":" in spec.rsplit("/", 1)[-1] else ""
     return bool(tag) and tag != "latest"
 

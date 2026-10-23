@@ -93,3 +93,58 @@ class TestMaskingGaps:
         for prefix in ("f", "rf", "b"):
             out = mask_secrets(f'client = C(api_key={prefix}"{self.FSTRING_VALUE}")')
             assert self.FSTRING_VALUE not in out and f'api_key={prefix}"<redacted>"' in out
+
+
+class TestPositionalUrlHeaderMasking:
+    # Assembled at runtime so no key-shaped literal sits in this file.
+    TOKEN = "Zq" + "8" * 10 + "Wx" + "4" * 10
+    HEX = "a1" * 20
+    PASS = "pw" + "-" + "77" * 5
+
+    def test_positional_token_is_masked(self):
+        assert mask_secrets(f'c = anthropic.Anthropic("{self.TOKEN}")') == 'c = anthropic.Anthropic("<redacted>")'
+        assert mask_secrets(f"c = Client('x', '{self.HEX}', timeout=3)") == "c = Client('x', '<redacted>', timeout=3)"
+
+    def test_positional_non_tokens_are_kept(self):
+        for line in ('m = ChatAnthropic("claude-3-5-sonnet-20241022")',
+                     'k = os.getenv("ANTHROPIC_API_KEY_2024_PROD")',
+                     'c = OpenAI(base_url="https://api.example.com/v1")',
+                     'r = client.messages.create(user_input, "short")'):
+            assert mask_secrets(line) == line
+
+    def test_url_userinfo_and_query_are_masked(self):
+        out = mask_secrets(f'c = Client(base_url="https://bot:{self.PASS}@api.example.com/v1?api_key={self.TOKEN}&x=1")')
+        assert self.PASS not in out and self.TOKEN not in out
+        assert "https://<redacted>@api.example.com/v1?api_key=<redacted>&x=1" in out
+
+    def test_header_dict_values_are_masked(self):
+        out = mask_secrets(f'c = OpenAI(default_headers={{"X-Custom": "{self.PASS}", "X-Org": "acme"}})')
+        assert out == 'c = OpenAI(default_headers={"X-Custom": "<redacted>", "X-Org": "<redacted>"})'
+        out = mask_secrets(f'"headers": {{"X-Relay": "{self.PASS}"}}')
+        assert out == '"headers": {"X-Relay": "<redacted>"}'
+
+    def test_no_value_in_json_detection(self, tmp_path):
+        (tmp_path / "app.py").write_text(
+            "import anthropic\n"
+            f'c = anthropic.messages.Client("{self.TOKEN}", base_url="https://u:{self.PASS}@h.example")\n'
+        )
+        result = scan_directory(tmp_path)
+        assert any(d["line_number"] == 2 and "<redacted>" in d["code_snippet"] for d in result.detections)
+        output = format_json(result)
+        assert self.TOKEN not in output and self.PASS not in output
+
+
+class TestSkProjDetection:
+    PROJ_KEY = "sk-" + "proj-" + "Ab3" * 10 + "_" + "Cd4" * 8
+
+    def test_sk_proj_key_is_detected_once(self):
+        from aibom_scanner.detectors.secrets import detect_hardcoded_keys
+        dets = detect_hardcoded_keys("app.py", f'client = OpenAI(api_key="{self.PROJ_KEY}")\n')
+        assert [d.method for d in dets] == ["hardcoded_openai_key"]
+        assert dets[0].raw_value == self.PROJ_KEY and dets[0].redacted_value == "sk-p...d4"
+
+    def test_sk_proj_key_kept_out_of_report(self, tmp_path):
+        (tmp_path / "app.py").write_text(f'import openai\nclient = openai.OpenAI(api_key="{self.PROJ_KEY}")\n')
+        result = scan_directory(tmp_path)
+        assert any(s["method"] == "hardcoded_openai_key" for s in result.secrets)
+        assert self.PROJ_KEY not in format_json(result)

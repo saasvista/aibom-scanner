@@ -115,6 +115,8 @@ class TestUnpinnedMcp:
             "a": {"command": "npx", "args": ["-y", "x@1.0.0"]},
             "b": {"command": "node", "args": ["s.js"]},
             "c": {"url": "https://h.example/mcp"},
+            "d": {"command": "npx", "args": ["tsx", "./server.ts"]},
+            "e": {"command": "docker", "args": ["run", "-i", "--rm", "my-mcp-server"]},
         }}))
         assert not [r for r in scan_directory(tmp_path).risks if r["title"] == UNPINNED_MCP_TITLE]
 
@@ -127,10 +129,20 @@ class TestUnpinnedMcp:
 
 class TestCodeExecution:
     def test_fires_with_tool_evidence(self, tmp_path):
-        (tmp_path / "agent.py").write_text("from crewai_tools import CodeInterpreterTool\n")
+        (tmp_path / "agent.py").write_text("from crewai_tools import CodeInterpreterTool\ntools = [CodeInterpreterTool()]\n")
         (risk,) = [r for r in scan_directory(tmp_path).risks if r["title"] == CODE_EXEC_TITLE]
         assert risk["severity"] == "medium" and risk["evidence"] == ["CodeInterpreterTool agent.py:1"]
         assert "OWASP-ASI05" in risk["framework_refs"] and risk["evidence_basis"] == "observed"
+
+    def test_silent_on_import_alone(self, tmp_path):
+        (tmp_path / "agent.py").write_text("from crewai_tools import CodeInterpreterTool\n")
+        result = scan_directory(tmp_path)
+        assert [t["referenced"] for t in result.tool_capabilities] == [False]
+        assert not [r for r in result.risks if r["title"] == CODE_EXEC_TITLE]
+
+    def test_fires_on_module_attribute_use(self, tmp_path):
+        (tmp_path / "agent.py").write_text("import crewai_tools as ct\ntool = ct.CodeInterpreterTool()\n")
+        assert [r for r in scan_directory(tmp_path).risks if r["title"] == CODE_EXEC_TITLE]
 
     def test_silent_without_code_execution(self, tmp_path):
         (tmp_path / "agent.py").write_text("from crewai_tools import BraveSearchTool\n")
@@ -143,7 +155,7 @@ class TestCodeExecution:
 class TestOutputs:
     def test_sarif_carries_owasp_ids_as_tags(self, tmp_path):
         repo = _unpinned_repo(tmp_path)
-        (repo / "agent.py").write_text("from crewai_tools import CodeInterpreterTool\nimport mcp\n")
+        (repo / "agent.py").write_text("from crewai_tools import CodeInterpreterTool\nimport mcp\ntools = [CodeInterpreterTool()]\n")
         sarif = json.loads(format_sarif(scan_directory(repo)))
         tags = {t for rule in sarif["runs"][0]["tool"]["driver"]["rules"] for t in rule["properties"]["tags"]}
         assert {"OWASP-LLM03", "OWASP-ASI04", "OWASP-ASI05", "OWASP-LLM06"} <= tags

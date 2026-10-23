@@ -81,6 +81,7 @@ GITIGNORE_SECRETS_PATTERNS = [
 
 HARDCODED_KEY_PATTERNS = [
     (r"(?:sk-[a-zA-Z0-9]{20,})", "openai"),
+    (r"(?:sk-proj-[A-Za-z0-9_\-]{20,})", "openai"),
     (r"(?:sk-ant-[a-zA-Z0-9\-]{20,})", "anthropic"),
     (r"(?:AIza[0-9A-Za-z\-_]{35})", "google"),
     (r"(?:AKIA[0-9A-Z]{16})", "aws"),
@@ -101,11 +102,46 @@ _CREDENTIAL_ASSIGNMENT = re.compile(
 _BROAD_SK_KEY = re.compile(r"(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}")
 
 
+# Credentials inside a URL: the userinfo part (`https://user:pass@host`) and credential-named query parameters.
+_URL_USERINFO = re.compile(r"(?<=://)[^\s/?#@\"'`]+@")
+_URL_CREDENTIAL_PARAM = re.compile(
+    r"([?&](?:api[_-]?key|key|token|access[_-]?token|secret|password|passwd|auth|sig|signature)=)[^&#\s\"'`]+",
+    re.IGNORECASE,
+)
+
+# A dict literal assigned to `headers` on one line; every quoted value in it is masked, whatever the header name.
+_HEADERS_DICT = re.compile(r"""(headers["']?\s*[=:]\s*\{)([^{}]*)(\})""", re.IGNORECASE)
+_DICT_VALUE = re.compile(r"""(:\s*(?:rf|fr|rb|br|f|r|b)?)(["'`])((?:(?!\2).)+)\2""")
+
+# A quoted literal passed positionally (after `(` or `,`, before `,` or `)`) that looks like a token: 20+ token
+# characters with a letter and a digit, and an uppercase letter or 32+ characters. Env var names
+# (`os.getenv("API_KEY_2")`) and model ids (`"claude-3-5-sonnet-20241022"`) are left alone.
+_POSITIONAL_LITERAL = re.compile(r"""([(,]\s*(?:rf|fr|rb|br|f|r|b)?)(["'`])([A-Za-z0-9_\-+/=.~]{20,})\2(?=\s*[,)])""")
+
+
+def _token_shaped(value: str) -> bool:
+    return (
+        bool(re.search(r"[A-Za-z]", value)) and bool(re.search(r"[0-9]", value))
+        and not re.fullmatch(r"[A-Z0-9_]+", value)
+        and (bool(re.search(r"[A-Z]", value)) or len(value) >= 32)
+    )
+
+
 def mask_secrets(text: str) -> str:
-    """Replace key-shaped strings and quoted credential values with "<redacted>". For text that gets serialized."""
+    """Replace key-shaped strings and credential values with "<redacted>". For text that gets serialized.
+
+    Masked: known key shapes, quoted values assigned to credential-looking names, URL userinfo and credential
+    query parameters, every value in a one-line `headers` dict, and token-shaped literals passed positionally."""
     text = _BROAD_SK_KEY.sub("<redacted>", text)  # first, so a key with "_" or "-proj-" is masked whole
     for pattern, _provider in HARDCODED_KEY_PATTERNS:
         text = re.sub(pattern, "<redacted>", text)
+    text = _URL_USERINFO.sub("<redacted>@", text)
+    text = _URL_CREDENTIAL_PARAM.sub(r"\1<redacted>", text)
+    text = _HEADERS_DICT.sub(lambda m: m.group(1) + _DICT_VALUE.sub(r"\1\2<redacted>\2", m.group(2)) + m.group(3), text)
+    text = _POSITIONAL_LITERAL.sub(
+        lambda m: m.group(1) + m.group(2) + ("<redacted>" if _token_shaped(m.group(3)) else m.group(3)) + m.group(2),
+        text,
+    )
     return _CREDENTIAL_ASSIGNMENT.sub(r"\1\2<redacted>\2", text)
 
 

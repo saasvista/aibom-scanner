@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+Gaps left open by the 1.3.0 pre-release review.
+
+### Fixed
+
+- **`sk-proj-` keys are detected as hardcoded OpenAI keys.** They were masked in snippets but not reported.
+- **More credential values are masked in `code_snippet`:** the userinfo of a URL (`https://user:pass@host`),
+  credential-named URL query parameters (`?api_key=...`, `token`, `key`, `sig` and similar), every value in a
+  one-line `headers` dict, and a token-shaped literal passed positionally (`Client("...")`: 20+ characters with a
+  letter and a digit, and an uppercase letter or 32+ characters). Env var names and model ids are left as they are.
+- **No unpinned-server finding for a local script or image.** `npx tsx ./server.ts` (also `ts-node` and `node`)
+  runs code from the repo, and a docker image with no registry or namespace (`my-mcp-server`) or from a
+  `localhost` registry is built locally, so `pinned` is now null for them. Docker Hub official images also have
+  no namespace; MCP server images are published under one (`mcp/github`, `ghcr.io/...`).
+- **"Agent tool can execute code" needs the tool to be used, not only imported.** Python entries in
+  `tool_capabilities` gain `referenced`: true when the tool is named anywhere in the file outside its import.
+  The finding counts only referenced tools. The inventory and the combined-capability finding are unchanged.
+
 ## 1.3.1 (2026-10-19)
 
 Python manifest dependency accuracy.

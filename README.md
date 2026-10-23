@@ -97,7 +97,7 @@ names the tools behind each leg, so you can see which one to take away.
   Applications (2026). The nine items a static scan cannot see are reported as GAP, not hidden.
 - **Hardcoded keys stay out of the report.** 1.2.0 wrote the full value of a hardcoded key into the JSON output.
   1.3.0 does not, and it masks key-shaped strings in quoted code lines. A 1.2.0 JSON report that found a hardcoded
-  key holds that key. One limit: a key passed as a positional argument or inside a URL can still show in a snippet.
+  key holds that key.
 
 Full detail is in the [changelog](CHANGELOG.md).
 

@@ -466,20 +466,24 @@ class TestOddInput:
 
     def test_deeply_nested_json(self, tmp_path):
         depth = 100_000
-        (tmp_path / "deep.json").write_text('{"mcpServers": ' + "[" * depth + "]" * depth + "}")
-        assert scan_directory(tmp_path).mcp_servers == []
+        # Detectors re-raise RecursionError; the scanner's per-file boundary records it as analysis_incomplete.
+        with pytest.raises(RecursionError):
+            scan_mcp_config("deep.json", '{"mcpServers": ' + "[" * depth + "]" * depth + "}")
 
     @pytest.mark.parametrize("expr", [
         " + ".join(["'a'"] * 500),
         "x" + ".m()" * 200,
     ], ids=["plus_chain", "call_chain"])
     def test_deep_expression_in_mcp_python(self, tmp_path, expr):
-        (tmp_path / "app.py").write_text(
+        source = (
             "from mcp import StdioServerParameters\n"
             "s = StdioServerParameters(command='uvx', args=['t'])\n"
             f"y = {expr}\n"
         )
-        assert scan_directory(tmp_path).summary["files_scanned"] >= 1
+        # Detectors re-raise RecursionError; servers found before the error are attached as err.partial.
+        with pytest.raises(RecursionError) as exc:
+            scan_mcp_python("app.py", source)
+        assert [s["command"] for s in getattr(exc.value, "partial", [])] in ([], ["uvx"])
 
     def test_deep_attribute_chain(self, tmp_path):
         (tmp_path / "app.py").write_text("import langchain_community\nx = a" + ".b" * 1000 + "\n")

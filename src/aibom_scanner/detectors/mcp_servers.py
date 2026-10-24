@@ -324,8 +324,12 @@ def _transport_from_config(cfg: dict) -> str:
     if cfg.get("command"):
         return "stdio"
     url = cfg.get("url", cfg.get("serverUrl"))
-    if isinstance(url, str) and urlsplit(url).path.rstrip("/").endswith("/sse"):
-        return "sse"
+    if isinstance(url, str):
+        try:
+            if urlsplit(url).path.rstrip("/").endswith("/sse"):
+                return "sse"
+        except ValueError:
+            pass
     return "unknown"
 
 
@@ -342,7 +346,7 @@ def scan_mcp_json(rel_path: str, content: str) -> list[dict]:
     return []
 
 
-_JSON_KEY = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"\s*:')
+_JSON_STRING = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"(\s*:)?')
 
 
 def _key_line_map(content: str) -> dict[str, int]:
@@ -350,7 +354,9 @@ def _key_line_map(content: str) -> dict[str, int]:
     lines: dict[str, int] = {}
     line = 1
     last = 0
-    for m in _JSON_KEY.finditer(content):
+    for m in _JSON_STRING.finditer(content):
+        if not m.group(2):
+            continue
         line += content.count("\n", last, m.start())
         last = m.start()
         name = m.group(1)
@@ -367,7 +373,9 @@ def scan_mcp_config(rel_path: str, content: str, keys: tuple[str, ...] = MCP_CON
     """Extract servers from an MCP client config file. Malformed JSON returns []."""
     try:
         data = json.loads(content)
-    except (ValueError, RecursionError):
+    except RecursionError:
+        raise
+    except ValueError:
         return []
     if not isinstance(data, dict):
         return []
@@ -562,18 +570,24 @@ def _fields(node: ast.AST | None) -> dict[str, ast.AST]:
 
 
 def scan_mcp_python(rel_path: str, content: str) -> list[dict]:
-    """Extract servers from Python source. A file that does not parse yields []."""
+    """Extract servers from Python source. A file with a syntax error yields [].
+
+    A RecursionError (from ast.parse or the visitor) is re-raised. When the visitor raised it, the servers
+    collected before the error are attached as `err.partial` (a list); a parse-time error has no `partial`."""
     if not any(token in content for token in _QUICK_FILTER):
         return []
     try:
         tree = ast.parse(content)
-    except (SyntaxError, ValueError, RecursionError, MemoryError):
+    except RecursionError:
+        raise
+    except (SyntaxError, ValueError, MemoryError):
         return []
     visitor = _McpVisitor(rel_path)
     try:
         visitor.visit(tree)
-    except RecursionError:
-        return []
+    except RecursionError as err:
+        err.partial = visitor.servers
+        raise
     return visitor.servers
 
 

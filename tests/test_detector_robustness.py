@@ -20,10 +20,37 @@ class TestRecursionR1:
         tools = scan_tool_imports("agent.py", src)
         assert any("ShellTool" in t["tool"] and "code_execution" in t["classes"] for t in tools)
 
-    def test_scan_tool_imports_raises_on_deep_parse(self):
-        src = "import tavily\nx = a" + ".b" * 100_000 + "\n"
-        with pytest.raises(RecursionError):
-            scan_tool_imports("agent.py", src)
+    def test_long_chain_cost_is_linear(self):
+        # 100k links: 3.11+ rejects this at parse (RecursionError, flagged by the scanner);
+        # 3.10 parses it, and walking it must stay linear (it took minutes when every inner node was re-resolved).
+        import time
+        src = (
+            "from langchain_community.tools import ShellTool\n"
+            "tools = [ShellTool()]\n"
+            "x = ShellTool" + ".b" * 100_000 + "\n"
+        )
+        t = time.perf_counter()
+        try:
+            tools = scan_tool_imports("agent.py", src)
+        except RecursionError:
+            return
+        assert time.perf_counter() - t < 5
+        assert any("ShellTool" in t["tool"] for t in tools)
+
+    def test_scan_tool_imports_never_silently_empty_on_deep_parse(self):
+        # Python 3.11+ raises RecursionError while parsing this; 3.10 parses it.
+        # Either way the result must not be a silent []: the error propagates
+        # (the scanner counts it as analysis_incomplete) or the tool is found.
+        src = (
+            "from langchain_community.tools import ShellTool\n"
+            "tools = [ShellTool()]\n"
+            "x = a" + ".b" * 100_000 + "\n"
+        )
+        try:
+            tools = scan_tool_imports("agent.py", src)
+        except RecursionError:
+            return
+        assert any("ShellTool" in t["tool"] for t in tools)
 
     def test_scan_mcp_python_raises_on_deep_parse(self):
         src = "from mcp import StdioServerParameters\nx = a" + ".b" * 100_000 + "\n"

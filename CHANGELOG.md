@@ -51,7 +51,16 @@ Second hardening pass against hostile repositories, from a full security audit o
   surrogates are shown as `\uNNNN`; a lone surrogate no longer crashes table output.
 - **Crafted manifests and long lines no longer stall a scan.** The `pyproject.toml` header regex was cubic; the TOML
   table, inline-table and `.csproj` regexes, MCP key mapping with escaped quotes, and the hardcoded-key line lookup
-  were quadratic. All are linear now (1 MB payloads parse in well under a second).
+  were quadratic. All are linear now (1 MB payloads parse in well under a second). Long attribute chains are walked
+  once, so they are linear too on Python 3.10, which parses chains that 3.11+ rejects.
+
+### Known limits
+
+- On Python 3.10, `ast.parse` itself crashes the interpreter (segmentation fault) on a single attribute chain of
+  roughly 200,000 links. This is a CPython 3.10 parser bug, not scanner code; the crash fails the CI step rather
+  than passing it. Python 3.11+ raises `RecursionError` instead, which the scanner counts in `incomplete_inputs`.
+- Test, fixture and mock directories are still skipped by design, so AI usage placed there is not inventoried.
+  Hardcoded keys in them are reported.
 
 ## 1.3.3 (2026-10-24)
 

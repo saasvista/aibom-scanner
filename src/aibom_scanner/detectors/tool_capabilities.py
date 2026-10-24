@@ -48,6 +48,9 @@ def _classes_for(fq: str) -> list[str] | None:
     return None
 
 
+_MAX_CHAIN_ATTRS = 16
+
+
 def scan_tool_imports(rel_path: str, content: str) -> list[dict]:
     """Classified tools imported or referenced in a Python file. Syntax errors yield [].
 
@@ -69,15 +72,6 @@ def scan_tool_imports(rel_path: str, content: str) -> list[dict]:
         if classes and fq not in found:
             found[fq] = {"tool": fq, "classes": list(classes), "source": "import", "file": rel_path, "line": line,
                          "referenced": False}
-
-    def resolve(node: ast.AST) -> str | None:
-        attrs = []
-        while isinstance(node, ast.Attribute):
-            attrs.append(node.attr)
-            node = node.value
-        if not isinstance(node, ast.Name) or node.id not in imports:
-            return None
-        return ".".join([imports[node.id], *reversed(attrs)])
 
     def record_module(name: str, line: int) -> None:
         root = name.split(".")[0]
@@ -104,13 +98,26 @@ def scan_tool_imports(rel_path: str, content: str) -> list[dict]:
                 imports[a.asname or a.name] = f"{node.module}.{a.name}"
                 record(f"{node.module}.{a.name}", node.lineno)
     # A use is any name or attribute outside an import statement that resolves to an imported tool.
+    # Walk each a.b.c chain once, from its outermost node: resolving every inner node separately
+    # costs O(L^2) on a long chain (minutes on Python 3.10, which parses chains 3.11+ rejects).
+    inner = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Name, ast.Attribute)):
-            fq = resolve(node)
-            if fq:
-                if isinstance(node, ast.Attribute):
-                    record(fq, node.lineno)
-                mark_referenced(fq)
+        if not isinstance(node, (ast.Name, ast.Attribute)) or id(node) in inner:
+            continue
+        chain: list[ast.Attribute] = []
+        cur = node
+        while isinstance(cur, ast.Attribute):
+            chain.append(cur)
+            cur = cur.value
+        if not isinstance(cur, ast.Name) or cur.id not in imports:
+            continue
+        fq = imports[cur.id]
+        mark_referenced(fq)
+        # Catalog tool paths are a few attributes past the import; deeper prefixes cannot match.
+        for attr_node in reversed(chain[-_MAX_CHAIN_ATTRS:]):
+            fq = f"{fq}.{attr_node.attr}"
+            record(fq, attr_node.lineno)
+            mark_referenced(fq)
     return list(found.values())
 
 

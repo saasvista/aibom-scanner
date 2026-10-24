@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.3.3 (2026-10-24)
+
+Hardening against hostile repositories: the scanner now treats the scanned tree, its file names and its contents as
+untrusted.
+
+### Security
+
+- **Unquoted credentials are masked in `code_snippet`.** `export AZURE_OPENAI_API_KEY=...`, a docker-compose
+  `- NAME=...` entry, a YAML `NAME: ...` entry and an `Authorization: Bearer ...` header inside a curl line were
+  copied into JSON reports in full. Token-shaped values after a credential-like name, and Bearer/Basic tokens, are
+  now replaced with `<redacted>`. Env lookups, `$VAR` and `${{ secrets.X }}` references are left as they are.
+- **Reads stay inside the scan root.** A committed symlink (`leak.py -> ../somewhere/file`), a `..` entry in a
+  crafted git index, or a `.git` file with a `gitdir:` line could make the scanner read files outside the scanned
+  directory and put what it extracted in the report. Only regular files whose real path is inside the root are
+  read now; symlinks, devices, FIFOs and sockets are skipped.
+
+### Fixed
+
+- **Crafted files can no longer make a scan take hours.** Several patterns backtracked over long lines (a run of
+  quotes beside an SDK import, a repeated `from transformers import`, a repeated `secret`), so an 8 KB file took
+  seconds and the cost grew quadratically. The patterns are bounded, lines are cut at 2,000 characters before
+  matching, and source files over 1 MB are not read.
+- **Large MCP configs are linear.** Server line numbers come from one pass over the file instead of one search per
+  server; a 32,000-server config drops from about 4 s to about 0.1 s. Line numbers now come from real JSON keys only.
+- **Non-ASCII and control-character file names are scanned in git repos.** `git ls-files` C-quotes such names, so
+  `agént.py` was neither scanned nor counted and coverage still read 100%. The listing now uses `-z`.
+- **Skipped source files show up as a coverage gap.** `agent.PY` was skipped (extension match was case-sensitive),
+  and `src/metadata/apps/x.py` was skipped as a data directory (`data/apps` matched as a substring), with no
+  warning. Extensions now match case-insensitively and data directories match whole path segments. A new
+  `coverage.unread_source_files` field counts supported source files that were not read (for example, over 1 MB);
+  it drives the stderr warning, the table banner, the SARIF notification and `--fail-on-incomplete-coverage`
+  (exit 3).
+- **Table output escapes control characters.** MCP server names and file names from the scanned repo could carry
+  terminal escape sequences or a line starting with `::error::`. They are now shown as `\xNN`.
+
 ## 1.3.2 (2026-10-24)
 
 Security fix for the GitHub Action, plus gaps left open by the 1.3.0 pre-release review.

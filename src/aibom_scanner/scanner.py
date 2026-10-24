@@ -190,7 +190,16 @@ def scan_directory(path: str | Path) -> ScanResult:
 
     Returns a ScanResult with detections, risks, and control mappings.
     """
-    path = Path(path).resolve()
+    # Anchor at the real working directory. A path below it that resolves to a
+    # different place goes through a symlink (maybe one the scanned repository
+    # committed), so refuse it. Paths outside the working directory are the
+    # operator's choice and stay as given.
+    base = Path(os.path.realpath(os.getcwd()))
+    lexical = Path(os.path.normpath(os.path.join(base, path)))
+    resolved = lexical.resolve()
+    if lexical.is_relative_to(base) and resolved != lexical:
+        raise ValueError(f"Scan path contains a symlink: {lexical}")
+    path = resolved
     if not path.is_dir():
         raise ValueError(f"Not a directory: {path}")
 

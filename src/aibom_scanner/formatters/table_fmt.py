@@ -1,16 +1,30 @@
 """Terminal table output with ANSI colors."""
 
-import re
+import unicodedata
 
 from aibom_scanner.models import ScanResult
 
-# C0, DEL, C1 controls, and lone surrogates (undecodable file name bytes)
-_CTRL = re.compile("[\x00-\x1f\x7f-\x9f\udc80-\udcff]")
+# Control (Cc), format (Cf: bidi, zero-width, BOM), surrogate (Cs) and
+# line/paragraph separator (Zl, Zp) characters
+_ESCAPE_CATEGORIES = {"Cc", "Cf", "Cs", "Zl", "Zp"}
+
+
+def _escape_char(c: str) -> str:
+    code = ord(c)
+    if code < 0x100:
+        return f"\\x{code:02x}"
+    if code < 0x10000:
+        return f"\\u{code:04x}"
+    return f"\\U{code:08x}"
 
 
 def _safe(value) -> str:
-    """Escape control characters in a string that came from scanned content."""
-    return _CTRL.sub(lambda m: f"\\x{ord(m.group()):02x}", str(value if value is not None else ""))
+    """Escape control, format, separator and surrogate characters from scanned content."""
+    text = str(value if value is not None else "")
+    return "".join(
+        _escape_char(c) if unicodedata.category(c) in _ESCAPE_CATEGORIES else c
+        for c in text
+    )
 
 # ANSI color codes
 RED = "\033[91m"

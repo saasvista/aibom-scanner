@@ -95,6 +95,19 @@ def format_sarif(result: ScanResult) -> str:
                 ),
             },
         })
+    if coverage and coverage.get("incomplete_inputs"):
+        detail = ", ".join(f"{r}: {n}" for r, n in sorted(coverage["incomplete_inputs"].items()))
+        total = sum(coverage["incomplete_inputs"].values())
+        notifications.append({
+            "level": "warning",
+            "message": {
+                "text": (
+                    f"Incomplete coverage: {total} inputs were not fully analysed ({detail}). "
+                    f"This run scanned {coverage['files_scanned']} of {coverage['source_files_seen']} "
+                    f"source files ({coverage['coverage_pct']}%). Results are partial, not clean."
+                ),
+            },
+        })
     if notifications:
         invocation["toolExecutionNotifications"] = notifications
 

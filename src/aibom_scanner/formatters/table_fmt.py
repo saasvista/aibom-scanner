@@ -107,7 +107,7 @@ def format_table(result: ScanResult) -> str:
 
     # Unreadable languages and unread files — a partial scan must not read as a clean one
     cov = result.coverage
-    if cov and (cov.unsupported_languages or cov.unread_source_files):
+    if cov and cov.is_incomplete():
         lines.append("")
         lines.append(f"  {RED}{BOLD}INCOMPLETE COVERAGE{RESET}")
         if cov.unsupported_languages:
@@ -119,6 +119,10 @@ def format_table(result: ScanResult) -> str:
         if cov.unread_source_files:
             detail = ", ".join(f"{n} {ext} files" for ext, n in sorted(cov.unread_source_files.items()))
             lines.append(f"  {RED}{detail} were not read (too large or unreadable).{RESET}")
+        if cov.incomplete_inputs:
+            detail = ", ".join(f"{r}: {n}" for r, n in sorted(cov.incomplete_inputs.items()))
+            total = sum(cov.incomplete_inputs.values())
+            lines.append(f"  {RED}{total} inputs were not fully analysed ({detail}).{RESET}")
         lines.append(f"  {DIM}Findings below do not account for these files.{RESET}")
 
     # Risk summary

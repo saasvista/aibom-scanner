@@ -63,6 +63,22 @@ class CoverageReport:
     # extension -> count of supported-language source files that were not read
     # (too large, unreadable, rejected). Also counted in unscanned_by_extension.
     unread_source_files: dict[str, int] = field(default_factory=dict)
+    # reason -> count of inputs that were not fully analysed and are not already
+    # in unread_source_files. Reasons: "symlink", "not_regular_file", "submodule",
+    # "too_large", "parse_error", "analysis_incomplete".
+    incomplete_inputs: dict[str, int] = field(default_factory=dict)
+    # How the file list was built: "git" (git ls-files) or "walk" (os.walk).
+    listing_mode: str = "git"
+    # Repository-relative paths counted in skipped_by_path (sorted, capped at 100).
+    skipped_paths: list[str] = field(default_factory=list)
+
+    def is_incomplete(self) -> bool:
+        """True when any input was not read or not fully analysed.
+
+        The stderr warning, the table banner, the SARIF notification and
+        --fail-on-incomplete-coverage all use this one condition.
+        """
+        return bool(self.unsupported_languages or self.unread_source_files or self.incomplete_inputs)
 
 
 @dataclass

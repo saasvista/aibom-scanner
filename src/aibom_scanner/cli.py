@@ -114,6 +114,14 @@ def _run_scan(args: argparse.Namespace) -> None:
             file=sys.stderr,
         )
 
+    if coverage and coverage.incomplete_inputs:
+        detail = ", ".join(f"{r}: {n}" for r, n in sorted(coverage.incomplete_inputs.items()))
+        total = sum(coverage.incomplete_inputs.values())
+        print(
+            f"warning: incomplete coverage: {total} inputs were not fully analysed ({detail})",
+            file=sys.stderr,
+        )
+
     # Check severity threshold — observed findings only. Evidence-free governance
     # checklist items fire on every repo and made this flag unusable in v1.0.0.
     if args.severity_threshold:
@@ -125,9 +133,5 @@ def _run_scan(args: argparse.Namespace) -> None:
             if SEVERITY_RANK.get(sev, 0) >= threshold:
                 sys.exit(1)
 
-    if (
-        args.fail_on_incomplete_coverage
-        and coverage
-        and (coverage.unsupported_languages or coverage.unread_source_files)
-    ):
+    if args.fail_on_incomplete_coverage and coverage and coverage.is_incomplete():
         sys.exit(3)

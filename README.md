@@ -183,6 +183,17 @@ Every unread source file is attributed to exactly one reason:
 - **`skipped_by_path`** — intentional exclusion (tests, fixtures, examples, vendor).
 - **`unscanned_by_extension`** — this scanner version cannot parse the language.
 
+Three more `coverage` fields describe how the scan ran:
+
+| Field | Meaning |
+|---|---|
+| `incomplete_inputs` | Reason to count, for inputs that were not fully analysed and are not already in `unread_source_files`: `symlink` and `not_regular_file` (source-extension entries dropped from the listing), `submodule` (a git gitlink), `too_large` (a JSON config or manifest over 1 MB), `parse_error` (a detector failed on a file or a config could not be read) and `analysis_incomplete` (a detector hit the recursion limit). |
+| `listing_mode` | `git` (`git ls-files`, used inside any git work tree, also for a subdirectory) or `walk` (`os.walk`; a notice goes to stderr). In `walk` mode, source files in `node_modules`, `venv`, `build`, `dist` and similar directories count in `skipped_by_path`. |
+| `skipped_paths` | The paths counted in `skipped_by_path`: sorted, at most 100. |
+
+Hardcoded-key detection also runs on source files in skipped paths. Those secrets
+carry `"skipped_path": true`.
+
 **Languages the scanner cannot read are reported, never treated as clean.** When any
 turn up, a warning is printed to stderr, the table output shows an `INCOMPLETE
 COVERAGE` block, and SARIF carries a `toolExecutionNotification` so the run reads as
@@ -226,7 +237,7 @@ aibom-scanner scan --path . --fail-on-incomplete-coverage
 | `0` | Scan completed, no gate tripped |
 | `1` | Observed findings at or above `--severity-threshold` |
 | `2` | Bad arguments, unreadable path, or interrupted |
-| `3` | `--fail-on-incomplete-coverage` set and languages were unreadable, or supported source files were not read (for example, over 1 MB) |
+| `3` | `--fail-on-incomplete-coverage` set and languages were unreadable, supported source files were not read (for example, over 1 MB), or `incomplete_inputs` is not empty (oversize configs and manifests, symlinked source files, submodules, detector failures) |
 
 If both gates trip, `1` wins — an observed finding is more actionable than a coverage gap.
 

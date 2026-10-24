@@ -43,6 +43,15 @@ from aibom_scanner.risk_engine import classify_risks, consolidate_risks, set_evi
 MAX_SOURCE_BYTES = 1_000_000
 
 
+# The scanned repository controls .git/config. Switch off the config keys that
+# make git run a program named in it (a file system monitor, hooks).
+_GIT_SAFE_ARGS = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"]
+
+
+def _git_argv(*args: str) -> list[str]:
+    return ["git", *_GIT_SAFE_ARGS, *args]
+
+
 def _is_git_repo(path: Path) -> bool:
     return (path / ".git").exists()
 
@@ -52,7 +61,7 @@ def _get_file_tree(path: Path) -> list[str]:
     if _is_git_repo(path):
         try:
             result = subprocess.run(
-                ["git", "ls-files", "-z"],
+                _git_argv("ls-files", "-z"),
                 cwd=str(path),
                 capture_output=True,
                 text=True,

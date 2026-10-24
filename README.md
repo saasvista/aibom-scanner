@@ -224,6 +224,9 @@ aibom-scanner scan --path . --format json > aibom.json
 
 # SARIF for GitHub Code Scanning — observed findings only, coverage in run properties
 aibom-scanner scan --path . --format sarif > results.sarif
+# Upload it in a GitHub Actions job with: permissions: security-events: write
+#   - uses: github/codeql-action/upload-sarif@v3
+#     with: { sarif_file: results.sarif }
 
 # Fail CI on high/critical OBSERVED findings (exit 1)
 aibom-scanner scan --path . --severity-threshold high

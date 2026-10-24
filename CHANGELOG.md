@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- **Workflow commands in scanned content are neutralized in `json`, `table` and `sarif` output.** The GitHub
+  Actions runner parses `##[cmd]` anywhere in a log line, and the Action prints scanner output to the step log. A
+  file named `##[warning]x.py` or an MCP server named `##[add-mask]x` could forge annotations or run runner
+  commands. JSON and SARIF now write each `##[` as `#\u0023[` (same decoded value); the table writes `#\x23[`.
+
+### Fixed
+
+- **SARIF uploads are accepted by GitHub code scanning.** Every result now carries a `locations` entry (repo-relative
+  path and a start line of 1 or more), chosen from the first detection, dependency, MCP server, tool or secret
+  record of an affected provider, sorted by path and line. GitHub rejected all earlier uploads with "expected at
+  least one location".
+- **SARIF `ruleId` is stable.** It was `aibom/<category>/<position>`, so adding one provider could renumber other
+  rules. It is now `aibom/<category>/<title-slug>`. This changes the ids, but code scanning never accepted the
+  old uploads, so no alert history keys on them.
+
 ## 1.3.4 (2026-10-24)
 
 Second hardening pass against hostile repositories, from a full security audit of 1.3.3.

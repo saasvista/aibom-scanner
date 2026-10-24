@@ -21,10 +21,12 @@ def _escape_char(c: str) -> str:
 def _safe(value) -> str:
     """Escape control, format, separator and surrogate characters from scanned content."""
     text = str(value if value is not None else "")
-    return "".join(
+    text = "".join(
         _escape_char(c) if unicodedata.category(c) in _ESCAPE_CATEGORIES else c
         for c in text
     )
+    # The GitHub Actions runner parses ##[cmd] anywhere in a log line.
+    return text.replace("##[", "#\\x23[")
 
 # ANSI color codes
 RED = "\033[91m"

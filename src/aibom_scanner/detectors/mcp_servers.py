@@ -342,7 +342,7 @@ def scan_mcp_json(rel_path: str, content: str) -> list[dict]:
     return []
 
 
-_JSON_KEY = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"\s*:')
+_JSON_STRING = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"(\s*:)?')
 
 
 def _key_line_map(content: str) -> dict[str, int]:
@@ -350,7 +350,9 @@ def _key_line_map(content: str) -> dict[str, int]:
     lines: dict[str, int] = {}
     line = 1
     last = 0
-    for m in _JSON_KEY.finditer(content):
+    for m in _JSON_STRING.finditer(content):
+        if not m.group(2):
+            continue
         line += content.count("\n", last, m.start())
         last = m.start()
         name = m.group(1)

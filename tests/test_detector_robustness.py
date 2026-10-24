@@ -49,3 +49,23 @@ class TestRecursionR1:
         assert scan_tool_imports("a.py", "import tavily\nx = (\n") == []
         assert scan_mcp_python("a.py", "from mcp import StdioServerParameters\nx = (\n") == []
         assert scan_mcp_config(".mcp.json", "{not json") == []
+
+
+class TestKeyLineMapM1:
+    def test_escaped_quote_value_is_linear(self):
+        doc = '{"mcpServers":{"a":{"command":"x"}},"z":"' + '\\"' * 480_000 + '"}'
+        assert len(doc) < 1_000_100
+        t = time.perf_counter()
+        servers = scan_mcp_json("settings.json", doc)
+        assert time.perf_counter() - t < 2
+        assert [(s["name"], s["line"]) for s in servers] == [("a", 1)]
+
+    def test_lines_and_escaped_keys(self):
+        doc = '{\n "mcpServers": {\n  "a\\u0062": {"command": "x"},\n  "c": {"command": "y", "env": {"k": "v:\\"w\\" : q"}}\n }\n}\n'
+        lines = {s["name"]: s["line"] for s in scan_mcp_json("m.json", doc)}
+        assert lines == {"ab": 3, "c": 4}
+
+    def test_value_that_looks_like_key_not_mapped(self):
+        doc = json.dumps({"x": '"a": 1', "mcpServers": {"a": {"command": "x"}}}, indent=1)
+        servers = scan_mcp_json("m.json", doc)
+        assert servers[0]["line"] == doc.splitlines().index('  "a": {') + 1

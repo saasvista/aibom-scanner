@@ -27,10 +27,15 @@ runs:
       run: pip install aibom-scanner
       shell: bash
     - name: Run scan
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_SEVERITY_THRESHOLD: ${{ inputs.severity-threshold }}
+        INPUT_FAIL_ON_INCOMPLETE_COVERAGE: ${{ inputs.fail-on-incomplete-coverage }}
       run: |
-        ARGS="--path ${{ inputs.path }} --format ${{ inputs.format }} --severity-threshold ${{ inputs.severity-threshold }}"
-        if [ "${{ inputs.fail-on-incomplete-coverage }}" = "true" ]; then
-          ARGS="$ARGS --fail-on-incomplete-coverage"
+        args=(--path "$INPUT_PATH" --format "$INPUT_FORMAT" --severity-threshold "$INPUT_SEVERITY_THRESHOLD")
+        if [ "$INPUT_FAIL_ON_INCOMPLETE_COVERAGE" = "true" ]; then
+          args+=(--fail-on-incomplete-coverage)
         fi
-        aibom-scanner scan $ARGS
+        aibom-scanner scan "${args[@]}"
       shell: bash

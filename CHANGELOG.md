@@ -1,8 +1,18 @@
 # Changelog
 
-## Unreleased
+## 1.3.2 (2026-10-24)
 
-Gaps left open by the 1.3.0 pre-release review.
+Security fix for the GitHub Action, plus gaps left open by the 1.3.0 pre-release review.
+
+### Security
+
+- **The GitHub Action no longer runs its inputs as shell code.** `action.yml` pasted `${{ inputs.* }}` straight
+  into the bash `run:` script and expanded the arguments unquoted. A workflow that passed an untrusted value
+  (a branch name, a PR-derived path, a `workflow_dispatch` field) into `path`, `format`, `severity-threshold` or
+  `fail-on-incomplete-coverage` let that value run commands in the job, or add scanner options such as
+  `--output <file>`. Inputs now reach the step as environment variables and the scanner as single quoted
+  arguments. Workflows that pass only literal inputs, as the README example does, were not affected. Upgrade
+  any workflow that pins an older Action ref.
 
 ### Fixed
 

@@ -83,6 +83,18 @@ def format_sarif(result: ScanResult) -> str:
                 ),
             },
         })
+    if coverage and coverage.get("unread_source_files"):
+        detail = ", ".join(f"{n} {ext} files" for ext, n in sorted(coverage["unread_source_files"].items()))
+        notifications.append({
+            "level": "warning",
+            "message": {
+                "text": (
+                    f"Incomplete coverage: {detail} were not read (too large or unreadable). "
+                    f"This run scanned {coverage['files_scanned']} of {coverage['source_files_seen']} "
+                    f"source files ({coverage['coverage_pct']}%). Results are partial, not clean."
+                ),
+            },
+        })
     if notifications:
         invocation["toolExecutionNotifications"] = notifications
 

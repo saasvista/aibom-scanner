@@ -79,6 +79,14 @@ class TestSarifFormatter:
         assert len(notifications) == 1
         assert ".ps1" in notifications[0]["message"]["text"]
 
+    def test_unread_source_file_emits_notification(self, tmp_path):
+        (tmp_path / "app.py").write_text("import openai\n")
+        (tmp_path / "big.py").write_text("x = 1\n" * 200_000)
+        sarif = json.loads(format_sarif(scan_directory(tmp_path)))
+        notifications = sarif["runs"][0]["invocations"][0]["toolExecutionNotifications"]
+        assert len(notifications) == 1
+        assert "1 .py files were not read" in notifications[0]["message"]["text"]
+
     def test_complete_coverage_emits_no_notification(self, tmp_path):
         (tmp_path / "app.py").write_text("import openai\n")
         sarif = json.loads(format_sarif(scan_directory(tmp_path)))

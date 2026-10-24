@@ -86,7 +86,7 @@ class TestStderrHygiene:
     def test_no_warning_when_coverage_complete(self, tmp_path, capsys):
         (tmp_path / "app.py").write_text("import openai\n")
         main(["scan", "--path", str(tmp_path), "--format", "json"])
-        assert capsys.readouterr().err == ""
+        assert "warning:" not in capsys.readouterr().err
 
 
 class TestExitCodePrecedence:

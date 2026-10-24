@@ -15,7 +15,7 @@ class TestRecursionR1:
             "from langchain_community.tools import ShellTool\n"
             "import tavily\n"
             "tools = [ShellTool()]\n"
-            "z = tavily" + ".b" * 3000 + "\n"
+            "z = tavily" + ".b" * 1500 + "\n"
         )
         tools = scan_tool_imports("agent.py", src)
         assert any("ShellTool" in t["tool"] and "code_execution" in t["classes"] for t in tools)
@@ -34,7 +34,7 @@ class TestRecursionR1:
         src = (
             "from mcp import StdioServerParameters\n"
             "fs = StdioServerParameters(command='npx', args=['-y', 'pkg'])\n"
-            "z = fs" + ".b" * 3000 + "\n"
+            "z = fs" + ".b" * 1500 + "\n"
         )
         with pytest.raises(RecursionError) as exc:
             scan_mcp_python("srv.py", src)

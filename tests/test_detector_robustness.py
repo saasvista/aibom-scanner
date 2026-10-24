@@ -69,3 +69,14 @@ class TestKeyLineMapM1:
         doc = json.dumps({"x": '"a": 1', "mcpServers": {"a": {"command": "x"}}}, indent=1)
         servers = scan_mcp_json("m.json", doc)
         assert servers[0]["line"] == doc.splitlines().index('  "a": {') + 1
+
+
+class TestTransportM2:
+    def test_bad_ipv6_url_does_not_raise(self):
+        cfg = {"mcpServers": {"x": {"url": "http://[::1/sse"}}}
+        servers = scan_mcp_config(".mcp.json", json.dumps(cfg))
+        assert [s["transport"] for s in servers] == ["unknown"]
+
+    def test_good_sse_url_still_sse(self):
+        cfg = {"mcpServers": {"x": {"url": "https://h.example/sse"}}}
+        assert scan_mcp_config(".mcp.json", json.dumps(cfg))[0]["transport"] == "sse"

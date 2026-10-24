@@ -324,8 +324,12 @@ def _transport_from_config(cfg: dict) -> str:
     if cfg.get("command"):
         return "stdio"
     url = cfg.get("url", cfg.get("serverUrl"))
-    if isinstance(url, str) and urlsplit(url).path.rstrip("/").endswith("/sse"):
-        return "sse"
+    if isinstance(url, str):
+        try:
+            if urlsplit(url).path.rstrip("/").endswith("/sse"):
+                return "sse"
+        except ValueError:
+            pass
     return "unknown"
 
 

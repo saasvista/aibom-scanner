@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> None:
     scan_parser.add_argument(
         "--fail-on-incomplete-coverage",
         action="store_true",
-        help="Exit with code 3 if the scanner could not read some source languages",
+        help="Exit with code 3 if the scanner could not read some source languages or files",
     )
 
     args = parser.parse_args(argv)
@@ -105,6 +105,14 @@ def _run_scan(args: argparse.Namespace) -> None:
             f"{coverage.coverage_pct}%)",
             file=sys.stderr,
         )
+    if coverage and coverage.unread_source_files:
+        detail = ", ".join(f"{n} {ext}" for ext, n in sorted(coverage.unread_source_files.items()))
+        print(
+            f"warning: incomplete coverage — {detail} files were not read "
+            f"({coverage.files_scanned} of {coverage.source_files_seen} source files scanned, "
+            f"{coverage.coverage_pct}%)",
+            file=sys.stderr,
+        )
 
     # Check severity threshold — observed findings only. Evidence-free governance
     # checklist items fire on every repo and made this flag unusable in v1.0.0.
@@ -117,5 +125,9 @@ def _run_scan(args: argparse.Namespace) -> None:
             if SEVERITY_RANK.get(sev, 0) >= threshold:
                 sys.exit(1)
 
-    if args.fail_on_incomplete_coverage and coverage and coverage.unsupported_languages:
+    if (
+        args.fail_on_incomplete_coverage
+        and coverage
+        and (coverage.unsupported_languages or coverage.unread_source_files)
+    ):
         sys.exit(3)

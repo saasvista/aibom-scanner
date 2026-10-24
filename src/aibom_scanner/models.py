@@ -60,6 +60,9 @@ class CoverageReport:
     coverage_pct: float = 0.0
     readable_coverage_pct: float = 0.0
     unsupported_languages: list[str] = field(default_factory=list)
+    # extension -> count of supported-language source files that were not read
+    # (too large, unreadable, rejected). Also counted in unscanned_by_extension.
+    unread_source_files: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass

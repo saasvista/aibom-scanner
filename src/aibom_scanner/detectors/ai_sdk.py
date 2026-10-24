@@ -778,11 +778,12 @@ def should_scan_file(file_path: str) -> bool:
     archives, and other non-production paths.
     """
     # Check extension
-    has_code_ext = any(file_path.endswith(ext) for ext in SCANNABLE_EXTENSIONS)
-    has_json_ext = any(file_path.endswith(ext) for ext in JSON_SCANNABLE)
+    lower = file_path.lower()
+    has_code_ext = any(lower.endswith(ext) for ext in SCANNABLE_EXTENSIONS)
+    has_json_ext = any(lower.endswith(ext) for ext in JSON_SCANNABLE)
     filename_lower = file_path.split("/")[-1].lower()
     has_manifest = (
-        any(file_path.endswith(ext) for ext in MANIFEST_EXTENSIONS)
+        any(lower.endswith(ext) for ext in MANIFEST_EXTENSIONS)
         or filename_lower in MANIFEST_FILENAMES
     )
 
@@ -797,9 +798,10 @@ def should_scan_file(file_path: str) -> bool:
     if segments & SKIP_PATH_SEGMENTS:
         return False
 
-    # Skip data directories
+    # Skip data directories (matched on whole path segments)
+    wrapped = "/" + path_lower.replace("\\", "/") + "/"
     for data_path in SKIP_DATA_PATHS:
-        if data_path in path_lower:
+        if "/" + data_path + "/" in wrapped:
             return False
 
     # JSON files: only scan config-like files (package.json, tsconfig, etc.)

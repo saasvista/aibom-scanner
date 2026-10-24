@@ -81,16 +81,20 @@ def format_table(result: ScanResult) -> str:
         prov_str = ", ".join(f"{CYAN}{p}{RESET} ({c})" for p, c in sorted(providers.items(), key=lambda x: -x[1]))
         lines.append(f"  Providers: {prov_str}")
 
-    # Unreadable languages — a partial scan must not read as a clean one
+    # Unreadable languages and unread files — a partial scan must not read as a clean one
     cov = result.coverage
-    if cov and cov.unsupported_languages:
-        detail = ", ".join(
-            f"{cov.unscanned_by_extension.get(ext, 0)} {ext} files"
-            for ext in cov.unsupported_languages
-        )
+    if cov and (cov.unsupported_languages or cov.unread_source_files):
         lines.append("")
         lines.append(f"  {RED}{BOLD}INCOMPLETE COVERAGE{RESET}")
-        lines.append(f"  {RED}{detail} could not be read by this scanner version.{RESET}")
+        if cov.unsupported_languages:
+            detail = ", ".join(
+                f"{cov.unscanned_by_extension.get(ext, 0)} {ext} files"
+                for ext in cov.unsupported_languages
+            )
+            lines.append(f"  {RED}{detail} could not be read by this scanner version.{RESET}")
+        if cov.unread_source_files:
+            detail = ", ".join(f"{n} {ext} files" for ext, n in sorted(cov.unread_source_files.items()))
+            lines.append(f"  {RED}{detail} were not read (too large or unreadable).{RESET}")
         lines.append(f"  {DIM}Findings below do not account for these files.{RESET}")
 
     # Risk summary

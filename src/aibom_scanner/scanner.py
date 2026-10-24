@@ -11,6 +11,7 @@ from aibom_scanner import __version__
 from aibom_scanner.control_mapper import map_controls
 from aibom_scanner.detectors.ai_sdk import (
     SCANNABLE_EXTENSIONS,
+    SKIP_DATA_PATHS,
     SKIP_PATH_SEGMENTS,
     SOURCE_EXTENSIONS,
     Detection,
@@ -111,8 +112,11 @@ def _source_extension(file_path: str) -> str | None:
 
 def _is_path_skipped(file_path: str) -> bool:
     """True when a file is excluded for being test/fixture/example/vendor code."""
-    segments = set(file_path.lower().replace("\\", "/").split("/"))
-    return bool(segments & SKIP_PATH_SEGMENTS)
+    normalized = file_path.lower().replace("\\", "/")
+    if set(normalized.split("/")) & SKIP_PATH_SEGMENTS:
+        return True
+    wrapped = "/" + normalized + "/"
+    return any("/" + data_path + "/" in wrapped for data_path in SKIP_DATA_PATHS)
 
 
 def build_coverage_report(file_paths: list[str], scanned_paths: list[str]) -> CoverageReport:
@@ -124,12 +128,18 @@ def build_coverage_report(file_paths: list[str], scanned_paths: list[str]) -> Co
 
     Every source file is attributed to exactly one bucket, so
     files_scanned + skipped_by_path + sum(unscanned_by_extension) == source_files_seen.
+
+    unread_source_files is a view inside unscanned_by_extension: the files whose
+    extension the scanner does support but that were still not read (too large,
+    unreadable, or rejected by should_scan_file). They stay counted in
+    unscanned_by_extension too, so the invariant above holds.
     """
     scanned = set(scanned_paths)
     source_files_seen = 0
     source_files_scanned = 0
     skipped_by_path = 0
     unscanned_by_extension: dict[str, int] = {}
+    unread_source_files: dict[str, int] = {}
 
     for path in file_paths:
         ext = _source_extension(path)
@@ -142,6 +152,8 @@ def build_coverage_report(file_paths: list[str], scanned_paths: list[str]) -> Co
             skipped_by_path += 1
         else:
             unscanned_by_extension[ext] = unscanned_by_extension.get(ext, 0) + 1
+            if ext in SCANNABLE_EXTENSIONS:
+                unread_source_files[ext] = unread_source_files.get(ext, 0) + 1
 
     readable = source_files_seen - skipped_by_path
     coverage_pct = round((source_files_scanned / source_files_seen) * 100, 1) if source_files_seen > 0 else 0.0
@@ -160,6 +172,7 @@ def build_coverage_report(file_paths: list[str], scanned_paths: list[str]) -> Co
         coverage_pct=coverage_pct,
         readable_coverage_pct=readable_coverage_pct,
         unsupported_languages=unsupported_languages,
+        unread_source_files=unread_source_files,
     )
 
 

@@ -226,7 +226,7 @@ aibom-scanner scan --path . --fail-on-incomplete-coverage
 | `0` | Scan completed, no gate tripped |
 | `1` | Observed findings at or above `--severity-threshold` |
 | `2` | Bad arguments, unreadable path, or interrupted |
-| `3` | `--fail-on-incomplete-coverage` set and languages were unreadable |
+| `3` | `--fail-on-incomplete-coverage` set and languages were unreadable, or supported source files were not read (for example, over 1 MB) |
 
 If both gates trip, `1` wins — an observed finding is more actionable than a coverage gap.
 

@@ -37,7 +37,7 @@ AI_SDK_PATTERNS = [
     # Hugging Face — require word boundaries and specific suffixes to reduce false positives
     ("huggingface", "transformers", r"(?:from\s+transformers\b|import\s+transformers\b)", "import"),
     ("huggingface", "transformers", r"(?:Auto(?:Model|Tokenizer)(?:ForCausalLM|ForSeq2Seq|ForSequenceClassification|ForTokenClassification|ForQuestionAnswering|\.from_pretrained))", "import"),
-    ("huggingface", "transformers", r"(?:from\s+transformers\b.*import.*pipeline|transformers\.pipeline\(|pipeline\(\s*[\"'](?:text-|token-|question-|summarization|translation|fill-mask|image-|audio-|zero-shot|feature-extraction|sentiment))", "api_call"),
+    ("huggingface", "transformers", r"(?:from\s+transformers\b[^\n]{0,200}?\bimport\b[^\n]{0,200}?\bpipeline\b|transformers\.pipeline\(|pipeline\(\s*[\"'](?:text-|token-|question-|summarization|translation|fill-mask|image-|audio-|zero-shot|feature-extraction|sentiment))", "api_call"),
     # Cohere
     # Anchored to line start: `from app.services import cohere` imports a LOCAL
     # module, not the SDK. See issue #2 — provider names that are common English
@@ -137,32 +137,32 @@ AI_SDK_PATTERNS = [
 # Model name extraction patterns: (regex, group_index)
 MODEL_PATTERNS = [
     # OpenAI models
-    (r"""['\"]+(gpt-4[a-z0-9\-]*)['\"]""", 1),
-    (r"""['\"]+(gpt-3\.5[a-z0-9\-]*)['\"]""", 1),
-    (r"""['\"]+(o[1-9][a-z0-9\-]*)['\"]""", 1),  # o1, o3, etc.
-    (r"""['\"]+(davinci[a-z0-9\-]*)['\"]""", 1),
+    (r"""['\"](gpt-4[a-z0-9\-]*)['\"]""", 1),
+    (r"""['\"](gpt-3\.5[a-z0-9\-]*)['\"]""", 1),
+    (r"""['\"](o[1-9][a-z0-9\-]*)['\"]""", 1),  # o1, o3, etc.
+    (r"""['\"](davinci[a-z0-9\-]*)['\"]""", 1),
     # Anthropic models
-    (r"""['\"]+(claude-[a-z0-9\.\-]+)['\"]""", 1),
+    (r"""['\"](claude-[a-z0-9\.\-]+)['\"]""", 1),
     # Google models
-    (r"""['\"]+(gemini-[a-z0-9\.\-]+)['\"]""", 1),
-    (r"""['\"]+(palm-[a-z0-9\.\-]+)['\"]""", 1),
+    (r"""['\"](gemini-[a-z0-9\.\-]+)['\"]""", 1),
+    (r"""['\"](palm-[a-z0-9\.\-]+)['\"]""", 1),
     # Mistral models
-    (r"""['\"]+(mistral-[a-z0-9\.\-]+)['\"]""", 1),
-    (r"""['\"]+(mixtral-[a-z0-9\.\-]+)['\"]""", 1),
+    (r"""['\"](mistral-[a-z0-9\.\-]+)['\"]""", 1),
+    (r"""['\"](mixtral-[a-z0-9\.\-]+)['\"]""", 1),
     # Meta models
-    (r"""['\"]+(llama-[a-z0-9\.\-]+)['\"]""", 1),
-    (r"""['\"]+(llama[23][a-z0-9\.\-]*)['\"]""", 1),
+    (r"""['\"](llama-[a-z0-9\.\-]+)['\"]""", 1),
+    (r"""['\"](llama[23][a-z0-9\.\-]*)['\"]""", 1),
     # Chinese AI models
-    (r"""['\"]+(deepseek-(?:chat|coder|reasoner|v[0-9])[a-z0-9\.\-]*)['\"]""", 1),
-    (r"""['\"]+(qwen-?[a-z0-9\.\-]+)['\"]""", 1),
-    (r"""['\"]+(ernie-?[a-z0-9\.\-]+)['\"]""", 1),
-    (r"""['\"]+(glm-?[0-9][a-z0-9\.\-]*)['\"]""", 1),
-    (r"""['\"]+(moonshot-v[0-9][a-z0-9\.\-]*)['\"]""", 1),
-    (r"""['\"]+(yi-[a-z0-9\.\-]+)['\"]""", 1),
-    (r"""['\"]+(baichuan[0-9]-?[a-z0-9\.\-]*)['\"]""", 1),
-    (r"""['\"]+(abab[0-9][a-z0-9\.\-]*)['\"]""", 1),  # MiniMax model names
-    (r"""['\"]+(spark-?[a-z0-9\.\-]+)['\"]""", 1),  # iFlytek Spark models
-    (r"""['\"]+(sensenova-?[a-z0-9\.\-]+)['\"]""", 1),  # SenseTime SenseNova models
+    (r"""['\"](deepseek-(?:chat|coder|reasoner|v[0-9])[a-z0-9\.\-]*)['\"]""", 1),
+    (r"""['\"](qwen-?[a-z0-9\.\-]+)['\"]""", 1),
+    (r"""['\"](ernie-?[a-z0-9\.\-]+)['\"]""", 1),
+    (r"""['\"](glm-?[0-9][a-z0-9\.\-]*)['\"]""", 1),
+    (r"""['\"](moonshot-v[0-9][a-z0-9\.\-]*)['\"]""", 1),
+    (r"""['\"](yi-[a-z0-9\.\-]+)['\"]""", 1),
+    (r"""['\"](baichuan[0-9]-?[a-z0-9\.\-]*)['\"]""", 1),
+    (r"""['\"](abab[0-9][a-z0-9\.\-]*)['\"]""", 1),  # MiniMax model names
+    (r"""['\"](spark-?[a-z0-9\.\-]+)['\"]""", 1),  # iFlytek Spark models
+    (r"""['\"](sensenova-?[a-z0-9\.\-]+)['\"]""", 1),  # SenseTime SenseNova models
     # Generic model= param
     (r"""model\s*=\s*['\"]([a-zA-Z0-9\-\.\/\:]+)['\"]""", 1),
 ]
@@ -305,6 +305,9 @@ def _is_noise_line(line: str) -> bool:
     return bool(_ASSET_IMPORT.search(line))
 
 
+MAX_LINE_CHARS = 2000
+
+
 def scan_file(file_path: str, content: str) -> list[Detection]:
     """Scan a file's content for AI SDK usage patterns.
 
@@ -312,7 +315,7 @@ def scan_file(file_path: str, content: str) -> list[Detection]:
     unless different model_names are found (Task 1.2).
     """
     raw_detections = []
-    lines = content.split("\n")
+    lines = [ln[:MAX_LINE_CHARS] for ln in content.split("\n")]
 
     for line_num, line in enumerate(lines, start=1):
         if _is_noise_line(line):

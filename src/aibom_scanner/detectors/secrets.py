@@ -92,7 +92,7 @@ HARDCODED_KEY_PATTERNS = [
 # in single, double or backtick quotes, with an optional f / r / b string prefix.
 # Env lookups such as os.environ["API_KEY"] never match: the value must be a quoted literal after `=` or `:`.
 _CREDENTIAL_ASSIGNMENT = re.compile(
-    r"""((?:api[_-]?key|secret|token|password|passwd|authorization|bearer|credential)[\w-]*["']?\s*[=:]\s*(?:rf|fr|rb|br|f|r|b)?)"""
+    r"""((?:api[_-]?key|secret|token|password|passwd|authorization|bearer|credential)[\w-]{0,64}["']?\s*[=:]\s*(?:rf|fr|rb|br|f|r|b)?)"""
     r"""(["'`])((?:(?!\2).){8,})\2""",
     re.IGNORECASE,
 )

@@ -1,6 +1,16 @@
 """Terminal table output with ANSI colors."""
 
+import re
+
 from aibom_scanner.models import ScanResult
+
+# C0, DEL, C1 controls, and lone surrogates (undecodable file name bytes)
+_CTRL = re.compile("[\x00-\x1f\x7f-\x9f\udc80-\udcff]")
+
+
+def _safe(value) -> str:
+    """Escape control characters in a string that came from scanned content."""
+    return _CTRL.sub(lambda m: f"\\x{ord(m.group()):02x}", str(value if value is not None else ""))
 
 # ANSI color codes
 RED = "\033[91m"
@@ -46,10 +56,10 @@ def _render_risks(lines: list[str], risks: list[dict]) -> None:
     for risk in risks:
         sev = risk.get("severity", "medium")
         color = SEVERITY_COLORS.get(sev, "")
-        title = risk.get("title", "")
-        refs = ", ".join(risk.get("framework_refs", [])[:3])
+        title = _safe(risk.get("title", ""))
+        refs = _safe(", ".join(risk.get("framework_refs", [])[:3]))
         providers_list = risk.get("affected_providers", [])
-        prov_str = ", ".join(providers_list[:5]) if providers_list else ""
+        prov_str = _safe(", ".join(providers_list[:5])) if providers_list else ""
 
         lines.append(f"  {color}[{sev.upper():8s}]{RESET} {title}")
         if prov_str:
@@ -78,19 +88,23 @@ def format_table(result: ScanResult) -> str:
     lines.append(_coverage_line(result, files_scanned))
     lines.append(f"  Found {BOLD}{total_det}{RESET} AI SDK detections + {BOLD}{total_deps}{RESET} dependency detections")
     if providers:
-        prov_str = ", ".join(f"{CYAN}{p}{RESET} ({c})" for p, c in sorted(providers.items(), key=lambda x: -x[1]))
+        prov_str = ", ".join(f"{CYAN}{_safe(p)}{RESET} ({c})" for p, c in sorted(providers.items(), key=lambda x: -x[1]))
         lines.append(f"  Providers: {prov_str}")
 
-    # Unreadable languages — a partial scan must not read as a clean one
+    # Unreadable languages and unread files — a partial scan must not read as a clean one
     cov = result.coverage
-    if cov and cov.unsupported_languages:
-        detail = ", ".join(
-            f"{cov.unscanned_by_extension.get(ext, 0)} {ext} files"
-            for ext in cov.unsupported_languages
-        )
+    if cov and (cov.unsupported_languages or cov.unread_source_files):
         lines.append("")
         lines.append(f"  {RED}{BOLD}INCOMPLETE COVERAGE{RESET}")
-        lines.append(f"  {RED}{detail} could not be read by this scanner version.{RESET}")
+        if cov.unsupported_languages:
+            detail = ", ".join(
+                f"{cov.unscanned_by_extension.get(ext, 0)} {ext} files"
+                for ext in cov.unsupported_languages
+            )
+            lines.append(f"  {RED}{detail} could not be read by this scanner version.{RESET}")
+        if cov.unread_source_files:
+            detail = ", ".join(f"{n} {ext} files" for ext, n in sorted(cov.unread_source_files.items()))
+            lines.append(f"  {RED}{detail} were not read (too large or unreadable).{RESET}")
         lines.append(f"  {DIM}Findings below do not account for these files.{RESET}")
 
     # Risk summary
@@ -136,10 +150,10 @@ def format_table(result: ScanResult) -> str:
         lines.append(f"  {DIM}{'Provider':<16} {'SDK':<16} {'Type':<12} {'File':>26}{RESET}")
         lines.append(f"  {DIM}{'─'*16} {'─'*16} {'─'*12} {'─'*26}{RESET}")
         for d in result.detections[:30]:
-            provider = d.get("provider", "")
-            sdk = d.get("sdk_name", "")
-            dtype = d.get("detection_type", "")
-            fpath = d.get("file_path", "")
+            provider = _safe(d.get("provider", ""))
+            sdk = _safe(d.get("sdk_name", ""))
+            dtype = _safe(d.get("detection_type", ""))
+            fpath = _safe(d.get("file_path", ""))
             line = d.get("line_number", 0)
             loc = f"{fpath}:{line}" if line else fpath
             if len(loc) > 26:
@@ -154,14 +168,14 @@ def format_table(result: ScanResult) -> str:
         lines.append(f"{BOLD}MCP Servers ({len(result.mcp_servers)}){RESET}")
         lines.append(f"{DIM}{'─' * 70}{RESET}")
         for s in result.mcp_servers[:15]:
-            target = s.get("url_host") or s.get("command") or ""
+            target = _safe(s.get("url_host") or s.get("command") or "")
             pin = {True: "pinned", False: "unpinned"}.get(s.get("pinned"), "")
-            loc = f"{s.get('file', '')}:{s.get('line', 0)}"
-            lines.append(f"  {CYAN}{(s.get('name') or '(unnamed)')[:20]:<20}{RESET} {s.get('transport', ''):<8} "
+            loc = _safe(f"{s.get('file', '')}:{s.get('line', 0)}")
+            lines.append(f"  {CYAN}{_safe(s.get('name') or '(unnamed)')[:20]:<20}{RESET} {_safe(s.get('transport', '')):<8} "
                          f"{target[:28]:<28} {pin:<8} {DIM}{loc}{RESET}")
         if len(result.mcp_servers) > 15:
             lines.append(f"  {DIM}... and {len(result.mcp_servers) - 15} more{RESET}")
-        lines.append(f"  {DIM}{result.summary.get('mcp_servers_note', '')}{RESET}")
+        lines.append(f"  {DIM}{_safe(result.summary.get('mcp_servers_note', ''))}{RESET}")
         lines.append("")
 
     # Tool capability classes (tools matched by import or MCP package; unclassified tools are not listed)
@@ -170,9 +184,9 @@ def format_table(result: ScanResult) -> str:
         lines.append(f"{DIM}{'─' * 70}{RESET}")
         for cls in result.summary.get("capability_classes", []):
             tools = [t for t in result.tool_capabilities if cls in t["classes"]]
-            names = ", ".join(t["tool"].rsplit(".", 1)[-1] for t in tools[:3])
+            names = ", ".join(_safe(t["tool"].rsplit(".", 1)[-1]) for t in tools[:3])
             more = f" +{len(tools) - 3} more" if len(tools) > 3 else ""
-            lines.append(f"  {CYAN}{cls:<22}{RESET} {len(tools):>3}  {DIM}{names}{more}{RESET}")
+            lines.append(f"  {CYAN}{_safe(cls):<22}{RESET} {len(tools):>3}  {DIM}{names}{more}{RESET}")
         lines.append("")
 
     # CTA

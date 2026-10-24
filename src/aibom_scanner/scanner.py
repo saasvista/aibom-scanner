@@ -1,6 +1,7 @@
 """Scan a directory for AI SDK usage, risks, and compliance gaps."""
 
 import os
+import stat
 import subprocess
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ from aibom_scanner import __version__
 from aibom_scanner.control_mapper import map_controls
 from aibom_scanner.detectors.ai_sdk import (
     SCANNABLE_EXTENSIONS,
+    SKIP_DATA_PATHS,
     SKIP_PATH_SEGMENTS,
     SOURCE_EXTENSIONS,
     Detection,
@@ -38,6 +40,9 @@ from aibom_scanner.models import CoverageReport, ScanResult
 from aibom_scanner.risk_engine import classify_risks, consolidate_risks, set_evidence_basis
 
 
+MAX_SOURCE_BYTES = 1_000_000
+
+
 def _is_git_repo(path: Path) -> bool:
     return (path / ".git").exists()
 
@@ -47,15 +52,17 @@ def _get_file_tree(path: Path) -> list[str]:
     if _is_git_repo(path):
         try:
             result = subprocess.run(
-                ["git", "ls-files"],
+                ["git", "ls-files", "-z"],
                 cwd=str(path),
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="surrogateescape",
                 timeout=30,
             )
-            if result.returncode == 0 and result.stdout.strip():
-                return result.stdout.strip().splitlines()
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+            if result.returncode == 0 and result.stdout:
+                return [p for p in result.stdout.split("\0") if p]
+        except (subprocess.TimeoutExpired, FileNotFoundError, UnicodeDecodeError):
             pass
 
     # Fallback: os.walk
@@ -69,6 +76,31 @@ def _get_file_tree(path: Path) -> list[str]:
     return files
 
 
+def _confined_files(root: Path, listing: list[str]) -> dict[str, int]:
+    """Keep only regular files that sit inside the scan root.
+
+    Drops absolute paths, '..' entries, symlinks, devices, FIFOs, sockets and
+    missing paths, and anything whose real path leaves the resolved root. The
+    listing comes from the scanned repository (a git index or the file system),
+    so it is untrusted. Returns {relative path: lstat size} in listing order.
+    """
+    kept: dict[str, int] = {}
+    for rel in listing:
+        if not rel or os.path.isabs(rel) or ".." in rel.replace("\\", "/").split("/"):
+            continue
+        full = root / rel
+        try:
+            st = os.lstat(full)
+            if not stat.S_ISREG(st.st_mode):
+                continue
+            if not full.resolve().is_relative_to(root):
+                continue
+        except (OSError, ValueError, RuntimeError):
+            continue
+        kept[rel] = st.st_size
+    return kept
+
+
 def _source_extension(file_path: str) -> str | None:
     """Return the SOURCE_EXTENSIONS extension of a path, or None if not source."""
     lower = file_path.lower()
@@ -80,8 +112,11 @@ def _source_extension(file_path: str) -> str | None:
 
 def _is_path_skipped(file_path: str) -> bool:
     """True when a file is excluded for being test/fixture/example/vendor code."""
-    segments = set(file_path.lower().replace("\\", "/").split("/"))
-    return bool(segments & SKIP_PATH_SEGMENTS)
+    normalized = file_path.lower().replace("\\", "/")
+    if set(normalized.split("/")) & SKIP_PATH_SEGMENTS:
+        return True
+    wrapped = "/" + normalized + "/"
+    return any("/" + data_path + "/" in wrapped for data_path in SKIP_DATA_PATHS)
 
 
 def build_coverage_report(file_paths: list[str], scanned_paths: list[str]) -> CoverageReport:
@@ -93,12 +128,18 @@ def build_coverage_report(file_paths: list[str], scanned_paths: list[str]) -> Co
 
     Every source file is attributed to exactly one bucket, so
     files_scanned + skipped_by_path + sum(unscanned_by_extension) == source_files_seen.
+
+    unread_source_files is a view inside unscanned_by_extension: the files whose
+    extension the scanner does support but that were still not read (too large,
+    unreadable, or rejected by should_scan_file). They stay counted in
+    unscanned_by_extension too, so the invariant above holds.
     """
     scanned = set(scanned_paths)
     source_files_seen = 0
     source_files_scanned = 0
     skipped_by_path = 0
     unscanned_by_extension: dict[str, int] = {}
+    unread_source_files: dict[str, int] = {}
 
     for path in file_paths:
         ext = _source_extension(path)
@@ -111,6 +152,8 @@ def build_coverage_report(file_paths: list[str], scanned_paths: list[str]) -> Co
             skipped_by_path += 1
         else:
             unscanned_by_extension[ext] = unscanned_by_extension.get(ext, 0) + 1
+            if ext in SCANNABLE_EXTENSIONS:
+                unread_source_files[ext] = unread_source_files.get(ext, 0) + 1
 
     readable = source_files_seen - skipped_by_path
     coverage_pct = round((source_files_scanned / source_files_seen) * 100, 1) if source_files_seen > 0 else 0.0
@@ -129,6 +172,7 @@ def build_coverage_report(file_paths: list[str], scanned_paths: list[str]) -> Co
         coverage_pct=coverage_pct,
         readable_coverage_pct=readable_coverage_pct,
         unsupported_languages=unsupported_languages,
+        unread_source_files=unread_source_files,
     )
 
 
@@ -142,7 +186,8 @@ def scan_directory(path: str | Path) -> ScanResult:
         raise ValueError(f"Not a directory: {path}")
 
     scan_start = datetime.now(timezone.utc).isoformat()
-    files = _get_file_tree(path)
+    sizes = _confined_files(path, _get_file_tree(path))
+    files = list(sizes)
 
     all_detections: list[Detection] = []
     all_dep_detections: list[Detection] = []
@@ -158,7 +203,8 @@ def scan_directory(path: str | Path) -> ScanResult:
     # Read .gitignore if present
     gitignore_content = None
     gitignore_path = path / ".gitignore"
-    if gitignore_path.is_file():
+    gitignore_files = _confined_files(path, [".gitignore"])
+    if gitignore_files.get(".gitignore", MAX_SOURCE_BYTES + 1) <= MAX_SOURCE_BYTES:
         try:
             gitignore_content = gitignore_path.read_text(errors="ignore")
         except OSError:
@@ -174,12 +220,15 @@ def scan_directory(path: str | Path) -> ScanResult:
         # MCP client configs: named files, or any .json file that mentions "mcpServers"
         if rel_path.lower().endswith(".json") and not _is_path_skipped(rel_path):
             try:
-                if full_path.stat().st_size <= MAX_JSON_BYTES:
+                if sizes[rel_path] <= MAX_JSON_BYTES:
                     all_mcp_servers.extend(scan_mcp_json(rel_path, full_path.read_text(errors="ignore")))
             except (OSError, PermissionError):
                 pass
 
         if not should_scan_file(rel_path):
+            continue
+
+        if sizes[rel_path] > MAX_SOURCE_BYTES:
             continue
 
         try:

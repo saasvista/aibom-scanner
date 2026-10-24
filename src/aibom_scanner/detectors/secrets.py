@@ -92,10 +92,20 @@ HARDCODED_KEY_PATTERNS = [
 # in single, double or backtick quotes, with an optional f / r / b string prefix.
 # Env lookups such as os.environ["API_KEY"] never match: the value must be a quoted literal after `=` or `:`.
 _CREDENTIAL_ASSIGNMENT = re.compile(
-    r"""((?:api[_-]?key|secret|token|password|passwd|authorization|bearer|credential)[\w-]*["']?\s*[=:]\s*(?:rf|fr|rb|br|f|r|b)?)"""
+    r"""((?:api[_-]?key|secret|token|password|passwd|authorization|bearer|credential)[\w-]{0,64}["']?\s*[=:]\s*(?:rf|fr|rb|br|f|r|b)?)"""
     r"""(["'`])((?:(?!\2).){8,})\2""",
     re.IGNORECASE,
 )
+
+
+# An unquoted value after a credential-looking name (`export NAME=value`, compose `- NAME=value`, YAML `NAME: value`).
+# Only token-shaped values are masked, so variable references and plain words stay intact.
+_UNQUOTED_CREDENTIAL = re.compile(
+    r"""((?:api[_-]?key|secret|token|password|passwd|credential)[\w-]{0,64}\s*[=:]\s*)(?!["'`$({<])([^\s"'`,;(){}\[\]]{8,})(?![\[(\w.])""",
+    re.IGNORECASE,
+)
+# A Bearer or Basic credential inside a longer string (`curl -H "Authorization: Bearer ..."`).
+_AUTH_SCHEME_TOKEN = re.compile(r"""\b((?:bearer|basic)\s+)([A-Za-z0-9._~+/=-]{8,})""", re.IGNORECASE)
 
 
 # Masking only (not detection): any sk- token of 20+ characters, whatever the prefix or separators.
@@ -127,6 +137,10 @@ def _token_shaped(value: str) -> bool:
     )
 
 
+def _mask_if_token(m: re.Match) -> str:
+    return m.group(1) + ("<redacted>" if _token_shaped(m.group(2)) else m.group(2))
+
+
 def mask_secrets(text: str) -> str:
     """Replace key-shaped strings and credential values with "<redacted>". For text that gets serialized.
 
@@ -142,7 +156,9 @@ def mask_secrets(text: str) -> str:
         lambda m: m.group(1) + m.group(2) + ("<redacted>" if _token_shaped(m.group(3)) else m.group(3)) + m.group(2),
         text,
     )
-    return _CREDENTIAL_ASSIGNMENT.sub(r"\1\2<redacted>\2", text)
+    text = _CREDENTIAL_ASSIGNMENT.sub(r"\1\2<redacted>\2", text)
+    text = _UNQUOTED_CREDENTIAL.sub(_mask_if_token, text)
+    return _AUTH_SCHEME_TOKEN.sub(_mask_if_token, text)
 
 
 def redact_key(value: str) -> str:

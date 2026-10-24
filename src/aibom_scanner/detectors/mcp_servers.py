@@ -367,7 +367,9 @@ def scan_mcp_config(rel_path: str, content: str, keys: tuple[str, ...] = MCP_CON
     """Extract servers from an MCP client config file. Malformed JSON returns []."""
     try:
         data = json.loads(content)
-    except (ValueError, RecursionError):
+    except RecursionError:
+        raise
+    except ValueError:
         return []
     if not isinstance(data, dict):
         return []
@@ -562,18 +564,24 @@ def _fields(node: ast.AST | None) -> dict[str, ast.AST]:
 
 
 def scan_mcp_python(rel_path: str, content: str) -> list[dict]:
-    """Extract servers from Python source. A file that does not parse yields []."""
+    """Extract servers from Python source. A file with a syntax error yields [].
+
+    A RecursionError (from ast.parse or the visitor) is re-raised. When the visitor raised it, the servers
+    collected before the error are attached as `err.partial` (a list); a parse-time error has no `partial`."""
     if not any(token in content for token in _QUICK_FILTER):
         return []
     try:
         tree = ast.parse(content)
-    except (SyntaxError, ValueError, RecursionError, MemoryError):
+    except RecursionError:
+        raise
+    except (SyntaxError, ValueError, MemoryError):
         return []
     visitor = _McpVisitor(rel_path)
     try:
         visitor.visit(tree)
-    except RecursionError:
-        return []
+    except RecursionError as err:
+        err.partial = visitor.servers
+        raise
     return visitor.servers
 
 

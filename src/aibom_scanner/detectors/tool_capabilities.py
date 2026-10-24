@@ -49,13 +49,17 @@ def _classes_for(fq: str) -> list[str] | None:
 
 
 def scan_tool_imports(rel_path: str, content: str) -> list[dict]:
-    """Classified tools imported or referenced in a Python file. Unparseable files yield []."""
+    """Classified tools imported or referenced in a Python file. Syntax errors yield [].
+
+    A RecursionError (from ast.parse) is re-raised, so the caller can record the file as not fully analysed."""
     modules = load_data()["python_modules"]
     if not rel_path.endswith(".py") or not any(root in content for root in (*_REEXPORT_ROOTS, *modules)):
         return []
     try:
         tree = ast.parse(content)
-    except (SyntaxError, ValueError, RecursionError, MemoryError):
+    except RecursionError:
+        raise
+    except (SyntaxError, ValueError, MemoryError):
         return []
     imports: dict[str, str] = {}
     found: dict = {}
@@ -67,12 +71,13 @@ def scan_tool_imports(rel_path: str, content: str) -> list[dict]:
                          "referenced": False}
 
     def resolve(node: ast.AST) -> str | None:
-        if isinstance(node, ast.Name):
-            return imports.get(node.id)
-        if isinstance(node, ast.Attribute):
-            base = resolve(node.value)
-            return f"{base}.{node.attr}" if base else None
-        return None
+        attrs = []
+        while isinstance(node, ast.Attribute):
+            attrs.append(node.attr)
+            node = node.value
+        if not isinstance(node, ast.Name) or node.id not in imports:
+            return None
+        return ".".join([imports[node.id], *reversed(attrs)])
 
     def record_module(name: str, line: int) -> None:
         root = name.split(".")[0]
@@ -87,28 +92,25 @@ def scan_tool_imports(rel_path: str, content: str) -> list[dict]:
             if key in found:
                 found[key]["referenced"] = True
 
-    try:
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for a in node.names:
-                    record_module(a.name, node.lineno)
-                    imports[a.asname or a.name.split(".")[0]] = a.name if a.asname else a.name.split(".")[0]
-                    record(a.name, node.lineno)
-            elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
-                record_module(node.module, node.lineno)
-                for a in node.names:
-                    imports[a.asname or a.name] = f"{node.module}.{a.name}"
-                    record(f"{node.module}.{a.name}", node.lineno)
-        # A use is any name or attribute outside an import statement that resolves to an imported tool.
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.Name, ast.Attribute)):
-                fq = resolve(node)
-                if fq:
-                    if isinstance(node, ast.Attribute):
-                        record(fq, node.lineno)
-                    mark_referenced(fq)
-    except RecursionError:
-        return []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                record_module(a.name, node.lineno)
+                imports[a.asname or a.name.split(".")[0]] = a.name if a.asname else a.name.split(".")[0]
+                record(a.name, node.lineno)
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            record_module(node.module, node.lineno)
+            for a in node.names:
+                imports[a.asname or a.name] = f"{node.module}.{a.name}"
+                record(f"{node.module}.{a.name}", node.lineno)
+    # A use is any name or attribute outside an import statement that resolves to an imported tool.
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Name, ast.Attribute)):
+            fq = resolve(node)
+            if fq:
+                if isinstance(node, ast.Attribute):
+                    record(fq, node.lineno)
+                mark_referenced(fq)
     return list(found.values())
 
 

@@ -342,6 +342,27 @@ def scan_mcp_json(rel_path: str, content: str) -> list[dict]:
     return []
 
 
+_JSON_KEY = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"\s*:')
+
+
+def _key_line_map(content: str) -> dict[str, int]:
+    """Map each JSON object key to the 1-based line of its first occurrence, in one linear pass."""
+    lines: dict[str, int] = {}
+    line = 1
+    last = 0
+    for m in _JSON_KEY.finditer(content):
+        line += content.count("\n", last, m.start())
+        last = m.start()
+        name = m.group(1)
+        if "\\" in name:
+            try:
+                name = json.loads('"' + name + '"')
+            except ValueError:
+                continue
+        lines.setdefault(name, line)
+    return lines
+
+
 def scan_mcp_config(rel_path: str, content: str, keys: tuple[str, ...] = MCP_CONFIG_KEYS) -> list[dict]:
     """Extract servers from an MCP client config file. Malformed JSON returns []."""
     try:
@@ -351,6 +372,7 @@ def scan_mcp_config(rel_path: str, content: str, keys: tuple[str, ...] = MCP_CON
     if not isinstance(data, dict):
         return []
     servers = []
+    key_lines: dict[str, int] | None = None
     for key in keys:
         block = data.get(key)
         if not isinstance(block, dict):
@@ -360,8 +382,9 @@ def scan_mcp_config(rel_path: str, content: str, keys: tuple[str, ...] = MCP_CON
                 continue
             args = cfg.get("args") if isinstance(cfg.get("args"), list) else []
             env, headers = cfg.get("env"), cfg.get("headers")
-            m = re.search(r'"' + re.escape(name) + r'"\s*:', content)
-            line = content.count("\n", 0, m.start()) + 1 if m else 0
+            if key_lines is None:
+                key_lines = _key_line_map(content)
+            line = key_lines.get(name, 0)
             servers.append(_record(
                 name=name,
                 transport=_transport_from_config(cfg),

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aibom-scanner"
-version = "1.3.4"
+version = "1.3.5"
 description = "Scan codebases for AI SDK usage and map compliance risks to NIST AI RMF, ISO 42001, EU AI Act, and the OWASP LLM and Agentic Top 10 lists"
 readme = "README.md"
 license = "Apache-2.0"

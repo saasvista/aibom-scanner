@@ -1,13 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.3.5 (2026-10-24)
+
+Fixes two bugs found by live GitHub tests of 1.3.4. Both fixes were verified on GitHub before release.
 
 ### Security
 
 - **Workflow commands in scanned content are neutralized in `json`, `table` and `sarif` output.** The GitHub
   Actions runner parses `##[cmd]` anywhere in a log line, and the Action prints scanner output to the step log. A
   file named `##[warning]x.py` or an MCP server named `##[add-mask]x` could forge annotations or run runner
-  commands. JSON and SARIF now write each `##[` as `#\u0023[` (same decoded value); the table writes `#\x23[`.
+  commands. JSON and SARIF now write each `##[` as `\u0023#[` (same decoded value); the table writes `#\x23[`.
 
 ### Fixed
 

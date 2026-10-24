@@ -257,7 +257,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: saasvista/aibom-scanner@v1.3.3
+      - uses: saasvista/aibom-scanner@v1.3.4
         with:
           severity-threshold: high
 ```

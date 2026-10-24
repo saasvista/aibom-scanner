@@ -1,5 +1,58 @@
 # Changelog
 
+## 1.3.4 (2026-10-24)
+
+Second hardening pass against hostile repositories, from a full security audit of 1.3.3.
+
+### Security
+
+- **Scanning a repository no longer runs commands from its `.git/config`.** `git ls-files` honored the scanned
+  repo's `core.fsmonitor`, so a tree that arrived with its own `.git` directory (an archive, a copied working tree)
+  could run a command on the scanning host. Every git call now passes `-c core.fsmonitor=false -c
+  core.hooksPath=/dev/null`. A fresh clone or `actions/checkout` was not affected.
+- **More credential forms are masked in `code_snippet`.** Names that end in `_KEY` or `_SK` (`AZURE_OPENAI_KEY`,
+  `QIANFAN_SK`) and `os.environ["NAME"] = "value"` assignments were copied into JSON reports in full. A credential in
+  a `git+https://user:token@...` dependency spec was copied into `dependencies[].version`; versions are now masked too.
+- **A scan path that passes through a symlink is refused (exit 2).** A committed symlink named by `--path` (or the
+  Action's `path` input) moved the scan root outside the checkout.
+- **The GitHub Action installs the scanner version that matches its own release** (`aibom-scanner==1.3.4`), not the
+  newest one on PyPI. The release workflow checks that the pin matches the tag. Workflow actions are pinned by commit
+  SHA, and CI runs with a read-only token.
+
+### Fixed
+
+- **The coverage gate sees more of what was not read.** A new `coverage.incomplete_inputs` field counts inputs that
+  were not fully analysed: symlinked or non-regular source entries, git submodules, MCP configs or manifests over the
+  size cap, files a detector failed on, and files whose analysis hit Python's recursion limit. It drives the stderr
+  warning, the table banner, the SARIF notification and `--fail-on-incomplete-coverage` (exit 3). New fields
+  `coverage.listing_mode` (`git` or `walk`) and `coverage.skipped_paths` (up to 100 skipped paths) show what was
+  listed and what was excluded.
+- **Subdirectory scans list files with git.** A scan of a path inside a git work tree used the `os.walk` fallback,
+  which silently dropped `venv`, `.tox`, `build`, `dist` and similar directories. The work tree is now detected with
+  `git rev-parse`, and in walk mode those directories' source files count as skipped instead of vanishing. Walk mode
+  prints a one-line notice on stderr.
+- **Directory names no longer exempt production code from the gates.** `build`, `dist`, `vendor`, `third_party`,
+  `example(s)` and `spec(s)` are skipped only as the first path segment, so `src/app/vendor/x.py` is scanned. Test,
+  fixture and mock directories are still skipped at any depth, but hardcoded keys in skipped source files are now
+  reported (tagged `skipped_path: true`) and count toward the credential risk.
+- **Secret detection is harder to sidestep.** A key on a line that merely contains `search(`, `match(` or `prefix` is
+  reported; only a key that is the direct argument of a validation call (`key.startswith("sk-...")`) is still
+  ignored. The `format:` and `example:` line exemptions are gone. A secrets-manager "mitigated" verdict needs a real
+  signal: file indicators match by file name (not substring) outside skipped paths, comments do not count, and the
+  bare word `secretsmanager` counts only in a client call.
+- **One malformed file no longer aborts the scan.** A `package.json` whose top level or dependencies are not objects,
+  deeply nested JSON, an oversized integer, or an MCP `url` that `urlsplit` rejects made the whole scan exit without
+  a report. Each file's detectors now run behind a boundary; a failure is counted in `incomplete_inputs`.
+- **Deep attribute chains no longer erase findings.** One long `a.b.c...` chain made the tool-capability and MCP
+  detectors return nothing for the whole file. Attribute chains are resolved iteratively, and a remaining recursion
+  failure is counted.
+- **`requirements.txt`, `go.mod` and `Pipfile` are parsed in real scans.** They were only reachable from unit tests.
+- **Table output escapes every invisible character.** Unicode bidi, zero-width and line/paragraph separators and lone
+  surrogates are shown as `\uNNNN`; a lone surrogate no longer crashes table output.
+- **Crafted manifests and long lines no longer stall a scan.** The `pyproject.toml` header regex was cubic; the TOML
+  table, inline-table and `.csproj` regexes, MCP key mapping with escaped quotes, and the hardcoded-key line lookup
+  were quadratic. All are linear now (1 MB payloads parse in well under a second).
+
 ## 1.3.3 (2026-10-24)
 
 Hardening against hostile repositories: the scanner now treats the scanned tree, its file names and its contents as

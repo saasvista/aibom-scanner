@@ -12,8 +12,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
 
@@ -28,6 +28,9 @@ jobs:
           echo "tag=$TAG pyproject=$PKG __init__=$INIT"
           test "$TAG" = "$PKG"  || { echo "::error::tag $TAG != pyproject $PKG"; exit 1; }
           test "$TAG" = "$INIT" || { echo "::error::tag $TAG != __init__ $INIT"; exit 1; }
+          ACT=$(python -c "import re,pathlib;print(re.search(r'aibom-scanner==([0-9][^\"\' ]*)',pathlib.Path('action.yml').read_text()).group(1))")
+          echo "action.yml pin=$ACT"
+          test "$TAG" = "$ACT"  || { echo "::error::tag $TAG != action.yml pin $ACT"; exit 1; }
 
       - name: Run tests before publishing
         run: |
@@ -40,4 +43,4 @@ jobs:
       # Validate package metadata renders on PyPI before uploading.
       - run: twine check dist/*
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # release/v1

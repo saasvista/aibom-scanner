@@ -17,14 +17,14 @@ inputs:
     required: false
     default: 'high'
   fail-on-incomplete-coverage:
-    description: 'Fail (exit 3) if the scanner could not read some source languages. Off by default.'
+    description: 'Fail (exit 3) if the scan could not fully read or analyse some inputs (unsupported languages, unread files, oversized configs, symlinks, parse failures). Off by default.'
     required: false
     default: 'false'
 runs:
   using: 'composite'
   steps:
     - name: Install aibom-scanner
-      run: pip install aibom-scanner
+      run: pip install "aibom-scanner==1.3.4"
       shell: bash
     - name: Run scan
       env:

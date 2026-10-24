@@ -11,10 +11,9 @@ from aibom_scanner import __version__
 from aibom_scanner.control_mapper import map_controls
 from aibom_scanner.detectors.ai_sdk import (
     SCANNABLE_EXTENSIONS,
-    SKIP_DATA_PATHS,
-    SKIP_PATH_SEGMENTS,
     SOURCE_EXTENSIONS,
     Detection,
+    is_skipped_path,
     scan_dependencies,
     scan_file,
     should_scan_file,
@@ -112,11 +111,7 @@ def _source_extension(file_path: str) -> str | None:
 
 def _is_path_skipped(file_path: str) -> bool:
     """True when a file is excluded for being test/fixture/example/vendor code."""
-    normalized = file_path.lower().replace("\\", "/")
-    if set(normalized.split("/")) & SKIP_PATH_SEGMENTS:
-        return True
-    wrapped = "/" + normalized + "/"
-    return any("/" + data_path + "/" in wrapped for data_path in SKIP_DATA_PATHS)
+    return is_skipped_path(file_path)
 
 
 def build_coverage_report(file_paths: list[str], scanned_paths: list[str]) -> CoverageReport:

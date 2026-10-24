@@ -368,7 +368,7 @@ _TOML_ENTRY = re.compile(
     r"""(?m)^[ \t]*(?P<key>[A-Za-z][A-Za-z0-9._-]*)\s*=\s*(?:"(?P<dq>[^"]*)"|'(?P<sq>[^']*)')"""
 )
 _TOML_TABLE = re.compile(
-    r"""(?m)^[ \t]*(?P<key>[A-Za-z][A-Za-z0-9._-]*)\s*=\s*\{(?P<body>[^}]*)\}"""
+    r"""(?m)^[ \t]*(?P<key>[A-Za-z][A-Za-z0-9._-]*)\s*=\s*\{(?P<body>[^}\n]*)\}"""
 )
 _QUOTED = re.compile(r"""(?:"(?P<dq>[^"]*)"|'(?P<sq>[^']*)')""")
 _TOML_VERSION = re.compile(r"[0-9][A-Za-z0-9.\-*]*")
@@ -387,7 +387,7 @@ def _quoted_spans(text: str) -> list[tuple[int, int, str]]:
 def _version_from_spec(spec: str) -> str | None:
     """The version in a constraint such as ">=1.30" or "^1.30"."""
     match = _TOML_VERSION.search(spec or "")
-    return match.group(0) if match else None
+    return mask_secrets(match.group(0))[:100] if match else None
 
 
 def _normalize_python_name(name: str) -> str:
@@ -403,23 +403,43 @@ def _parse_requirement(value: str) -> tuple[str, str | None] | None:
     return match.group("name").lower(), _version_from_spec(match.group("spec") or "")
 
 
-_TOML_HEADER = re.compile(r"(?m)^[ \t]*(\[\[?)\s*([^\[\]\n]+?)\s*\]\]?[ \t]*(?:#.*)?$")
+_TOML_HEADER_LINE = re.compile(r"[ \t]*(\[\[?)([^\[\]]+)\]\]?[ \t]*(?:#.*)?")
 _PROJECT_DEPENDENCIES = re.compile(r"(?m)^[ \t]*dependencies\s*=\s*\[")
 _ARRAY_SECTIONS = ("project.optional-dependencies", "dependency-groups")
 _KEY_SECTIONS = (
     "tool.poetry.dependencies", "tool.poetry.dev-dependencies", "packages", "dev-packages",
 )
-_INLINE_TABLE = re.compile(r"\{[^}\n]*\}")
+_INLINE_TABLE = re.compile(r"\{[^{}\n]*\}")
+
+
+def _strip_xml_comments(text: str) -> str:
+    """Remove <!-- ... --> comments. An unterminated comment runs to the end."""
+    out, i = [], 0
+    while True:
+        j = text.find("<!--", i)
+        if j < 0:
+            out.append(text[i:])
+            return "".join(out)
+        out.append(text[i:j])
+        k = text.find("-->", j + 4)
+        if k < 0:
+            return "".join(out)
+        i = k + 3
 
 
 def _toml_sections(content: str) -> list[tuple[str, int, str]]:
     """(header name, body offset, body) for each table. `[[x]]` tables get an empty name."""
-    headers = list(_TOML_HEADER.finditer(content))
+    headers = []  # (line start, line end, bracket, name)
+    pos = 0
+    for line in content.split("\n"):
+        m = _TOML_HEADER_LINE.fullmatch(line)
+        if m:
+            headers.append((pos, pos + len(line), m.group(1), m.group(2).strip()))
+        pos += len(line) + 1
     sections = []
-    for i, m in enumerate(headers):
-        end = headers[i + 1].start() if i + 1 < len(headers) else len(content)
-        name = m.group(2) if m.group(1) == "[" else ""
-        sections.append((name, m.end(), content[m.end():end]))
+    for i, (_, end, bracket, name) in enumerate(headers):
+        stop = headers[i + 1][0] if i + 1 < len(headers) else len(content)
+        sections.append((name if bracket == "[" else "", end, content[end:stop]))
     return sections
 
 
@@ -502,15 +522,19 @@ def scan_dependencies(file_path: str, content: str) -> list[dict]:
         import json
         try:
             data = json.loads(content)
+            if not isinstance(data, dict):
+                data = {}
             for section in ["dependencies", "devDependencies"]:
                 deps = data.get(section, {})
+                if not isinstance(deps, dict):
+                    continue
                 for pkg, ver in deps.items():
                     pkg_lower = pkg.lower()
                     if pkg_lower in DEPENDENCY_MAP:
                         # Clean version string (remove ^, ~, etc.)
-                        clean_ver = re.sub(r'^[\^~>=<]+', '', str(ver))
+                        clean_ver = mask_secrets(re.sub(r'^[\^~>=<]+', '', str(ver)))[:100]
                         results.append({"package": pkg, "version": clean_ver, "provider": DEPENDENCY_MAP[pkg_lower], "source_file": file_path})
-        except json.JSONDecodeError:
+        except (ValueError, RecursionError):
             pass
 
     elif filename in ("Pipfile", "pyproject.toml"):
@@ -553,16 +577,16 @@ def scan_dependencies(file_path: str, content: str) -> list[dict]:
         # NuGet/MSBuild manifests. Regex, not XML parsing — MSBuild files carry
         # conditionals and imports that make strict XML parsing brittle, and a
         # malformed manifest must degrade to "no dependencies found", never raise.
-        cleaned = re.sub(r"<!--.*?-->", "", content, flags=re.DOTALL)
+        cleaned = _strip_xml_comments(content)
         name_lower = filename.lower()
         if name_lower == "packages.config":
-            element_pattern = r"<package\b([^>]*?)/?>"
+            element_pattern = r"<package\b([^<>]*?)/?>"
             id_attr = "id"
         elif name_lower == "directory.packages.props":
-            element_pattern = r"<PackageVersion\b([^>]*?)/?>"
+            element_pattern = r"<PackageVersion\b([^<>]*?)/?>"
             id_attr = "Include"
         else:
-            element_pattern = r"<PackageReference\b([^>]*?)/?>"
+            element_pattern = r"<PackageReference\b([^<>]*?)/?>"
             id_attr = "Include"
 
         for match in re.finditer(element_pattern, cleaned, re.IGNORECASE):
@@ -571,6 +595,8 @@ def scan_dependencies(file_path: str, content: str) -> list[dict]:
             if not pkg_id:
                 continue
             version = _extract_xml_attr(attrs, "version")
+            if version is not None:
+                version = mask_secrets(version)[:100]
             provider = _match_nuget_package(pkg_id)
             if provider:
                 results.append({"package": pkg_id, "version": version, "provider": provider, "source_file": file_path})
@@ -596,6 +622,9 @@ JSON_SCANNABLE = {".json"}
 MANIFEST_EXTENSIONS = {".csproj", ".fsproj", ".vbproj"}
 MANIFEST_FILENAMES = {"directory.packages.props", "packages.config"}
 
+# Exact dependency-manifest filenames that scan_dependencies parses (lowercase).
+DEPENDENCY_FILENAMES = {"requirements.txt", "go.mod", "pipfile"}
+
 # Every extension we consider "source" for coverage accounting. Superset of
 # SCANNABLE_EXTENSIONS: the extras are ecosystems this scanner version cannot
 # read, so they form the denominator of "of the source we intended to read,
@@ -611,13 +640,18 @@ SOURCE_EXTENSIONS = SCANNABLE_EXTENSIONS | UNSUPPORTED_EXTENSIONS
 # Path segments that indicate non-production code (test, fixture, data, docs, archives)
 SKIP_PATH_SEGMENTS = {
     "test", "tests", "testing", "__tests__", "__test__",
-    "spec", "specs", "__spec__",
+    "__spec__",
     "fixture", "fixtures", "__fixtures__",
     "mock", "mocks", "__mocks__",
-    "example", "examples",
-    "node_modules", ".next", "dist", "build", ".git",
+    "node_modules", ".next", ".git",
     "archives", "legacy-data",
-    "vendor", "third_party", "third-party",
+}
+
+# Segments that can be real production directories (an app may have a `vendor`
+# or `spec` package). They exclude a file only as the FIRST path segment.
+SKIP_FIRST_SEGMENTS = {
+    "build", "dist", "vendor", "third_party", "third-party",
+    "example", "examples", "spec", "specs",
 }
 
 # Path prefixes for data directories (matched against start of segments)
@@ -774,6 +808,23 @@ def classify_risk_tier(file_path: str, code_snippet: str = "") -> str:
     return "internal"
 
 
+def is_skipped_path(file_path: str) -> bool:
+    """True when a path is excluded as test/fixture/example/vendor code.
+
+    Test, fixture, mock and similar segments match at any depth. Segments that
+    can name real production code (build, dist, vendor, example, spec, ...)
+    match only as the first path segment.
+    """
+    normalized = file_path.lower().replace("\\", "/")
+    segments = normalized.split("/")
+    if set(segments) & SKIP_PATH_SEGMENTS:
+        return True
+    if len(segments) > 1 and segments[0] in SKIP_FIRST_SEGMENTS:
+        return True
+    wrapped = "/" + normalized + "/"
+    return any("/" + data_path + "/" in wrapped for data_path in SKIP_DATA_PATHS)
+
+
 def should_scan_file(file_path: str) -> bool:
     """Check if a file should be scanned based on extension and path.
 
@@ -788,24 +839,15 @@ def should_scan_file(file_path: str) -> bool:
     has_manifest = (
         any(lower.endswith(ext) for ext in MANIFEST_EXTENSIONS)
         or filename_lower in MANIFEST_FILENAMES
+        or filename_lower in DEPENDENCY_FILENAMES
     )
 
     if not has_code_ext and not has_json_ext and not has_manifest:
         return False
 
-    # Normalize path
-    path_lower = file_path.lower()
-    segments = set(path_lower.replace("\\", "/").split("/"))
-
-    # Skip paths with excluded segments
-    if segments & SKIP_PATH_SEGMENTS:
+    # Skip test/fixture/vendor paths and data directories
+    if is_skipped_path(file_path):
         return False
-
-    # Skip data directories (matched on whole path segments)
-    wrapped = "/" + path_lower.replace("\\", "/") + "/"
-    for data_path in SKIP_DATA_PATHS:
-        if "/" + data_path + "/" in wrapped:
-            return False
 
     # JSON files: only scan config-like files (package.json, tsconfig, etc.)
     # Skip large data JSON files

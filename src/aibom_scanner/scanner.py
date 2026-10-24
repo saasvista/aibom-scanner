@@ -1,6 +1,7 @@
 """Scan a directory for AI SDK usage, risks, and compliance gaps."""
 
 import os
+import stat
 import subprocess
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -38,6 +39,9 @@ from aibom_scanner.models import CoverageReport, ScanResult
 from aibom_scanner.risk_engine import classify_risks, consolidate_risks, set_evidence_basis
 
 
+MAX_SOURCE_BYTES = 1_000_000
+
+
 def _is_git_repo(path: Path) -> bool:
     return (path / ".git").exists()
 
@@ -69,6 +73,31 @@ def _get_file_tree(path: Path) -> list[str]:
             rel = os.path.relpath(os.path.join(root, f), path)
             files.append(rel)
     return files
+
+
+def _confined_files(root: Path, listing: list[str]) -> dict[str, int]:
+    """Keep only regular files that sit inside the scan root.
+
+    Drops absolute paths, '..' entries, symlinks, devices, FIFOs, sockets and
+    missing paths, and anything whose real path leaves the resolved root. The
+    listing comes from the scanned repository (a git index or the file system),
+    so it is untrusted. Returns {relative path: lstat size} in listing order.
+    """
+    kept: dict[str, int] = {}
+    for rel in listing:
+        if not rel or os.path.isabs(rel) or ".." in rel.replace("\\", "/").split("/"):
+            continue
+        full = root / rel
+        try:
+            st = os.lstat(full)
+            if not stat.S_ISREG(st.st_mode):
+                continue
+            if not full.resolve().is_relative_to(root):
+                continue
+        except (OSError, ValueError, RuntimeError):
+            continue
+        kept[rel] = st.st_size
+    return kept
 
 
 def _source_extension(file_path: str) -> str | None:
@@ -144,7 +173,8 @@ def scan_directory(path: str | Path) -> ScanResult:
         raise ValueError(f"Not a directory: {path}")
 
     scan_start = datetime.now(timezone.utc).isoformat()
-    files = _get_file_tree(path)
+    sizes = _confined_files(path, _get_file_tree(path))
+    files = list(sizes)
 
     all_detections: list[Detection] = []
     all_dep_detections: list[Detection] = []
@@ -160,7 +190,8 @@ def scan_directory(path: str | Path) -> ScanResult:
     # Read .gitignore if present
     gitignore_content = None
     gitignore_path = path / ".gitignore"
-    if gitignore_path.is_file():
+    gitignore_files = _confined_files(path, [".gitignore"])
+    if gitignore_files.get(".gitignore", MAX_SOURCE_BYTES + 1) <= MAX_SOURCE_BYTES:
         try:
             gitignore_content = gitignore_path.read_text(errors="ignore")
         except OSError:
@@ -176,12 +207,15 @@ def scan_directory(path: str | Path) -> ScanResult:
         # MCP client configs: named files, or any .json file that mentions "mcpServers"
         if rel_path.lower().endswith(".json") and not _is_path_skipped(rel_path):
             try:
-                if full_path.stat().st_size <= MAX_JSON_BYTES:
+                if sizes[rel_path] <= MAX_JSON_BYTES:
                     all_mcp_servers.extend(scan_mcp_json(rel_path, full_path.read_text(errors="ignore")))
             except (OSError, PermissionError):
                 pass
 
         if not should_scan_file(rel_path):
+            continue
+
+        if sizes[rel_path] > MAX_SOURCE_BYTES:
             continue
 
         try:

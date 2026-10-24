@@ -1,4 +1,5 @@
 """Detect secrets management practices and hardcoded API keys in repositories."""
+import bisect
 import os
 import re
 from dataclasses import dataclass
@@ -59,7 +60,7 @@ CODE_PATTERNS = [
     (r"os\.environ\.get\(|os\.getenv\(|os\.environ\[", "env_vars", 0.8),
     (r"process\.env\.", "env_vars", 0.8),
     (r"vault_client|hvac\.Client|vault\.read\(|vault\.secrets", "vault", 0.9),
-    (r"get_secret_value|secretsmanager", "aws_secrets_manager", 0.9),
+    (r"get_secret_value|(?:client|resource)\(\s*[\"']secretsmanager[\"']", "aws_secrets_manager", 0.9),
     (r"SecretClient\(|\.get_secret\(", "azure_keyvault", 0.9),
     (r"load_dotenv\(|dotenv\.config\(", "dotenv", 0.8),
     (r"SecretManagerServiceClient|access_secret_version", "gcp_secret_manager", 0.9),
@@ -91,8 +92,9 @@ HARDCODED_KEY_PATTERNS = [
 # A quoted string literal of 8+ characters assigned to a credential-looking name (`api_key="..."`, `"token": "..."`),
 # in single, double or backtick quotes, with an optional f / r / b string prefix.
 # Env lookups such as os.environ["API_KEY"] never match: the value must be a quoted literal after `=` or `:`.
+_CRED_NAME = r"(?:(?:api[_-]?key|secret|token|password|passwd|credential)[\w-]{0,64}|(?<![\w-])[\w-]*?[_-](?:key|sk)\b)"
 _CREDENTIAL_ASSIGNMENT = re.compile(
-    r"""((?:api[_-]?key|secret|token|password|passwd|authorization|bearer|credential)[\w-]{0,64}["']?\s*[=:]\s*(?:rf|fr|rb|br|f|r|b)?)"""
+    r"((?:" + _CRED_NAME + r"|(?:authorization|bearer)[\w-]{0,64})[\"']?\]?\s*[=:]\s*(?:rf|fr|rb|br|f|r|b)?)"
     r"""(["'`])((?:(?!\2).){8,})\2""",
     re.IGNORECASE,
 )
@@ -101,7 +103,7 @@ _CREDENTIAL_ASSIGNMENT = re.compile(
 # An unquoted value after a credential-looking name (`export NAME=value`, compose `- NAME=value`, YAML `NAME: value`).
 # Only token-shaped values are masked, so variable references and plain words stay intact.
 _UNQUOTED_CREDENTIAL = re.compile(
-    r"""((?:api[_-]?key|secret|token|password|passwd|credential)[\w-]{0,64}\s*[=:]\s*)(?!["'`$({<])([^\s"'`,;(){}\[\]]{8,})(?![\[(\w.])""",
+    r"(" + _CRED_NAME + r"\s*[=:]\s*)" + r"""(?!["'`$({<])([^\s"'`,;(){}\[\]]{8,})(?![\[(\w.])""",
     re.IGNORECASE,
 )
 # A Bearer or Basic credential inside a longer string (`curl -H "Authorization: Bearer ..."`).
@@ -166,6 +168,14 @@ def redact_key(value: str) -> str:
     return value[:4] + "..." + value[-2:]
 
 
+_LINE_COMMENT = re.compile(r"^\s*(?:#|//).*$", re.MULTILINE)
+
+
+def _strip_line_comments(content: str) -> str:
+    """Blank out whole-line `#` and `//` comments."""
+    return _LINE_COMMENT.sub("", content)
+
+
 def detect_secrets_management(
     file_paths: list[str],
     file_contents: dict[str, str] | None = None,
@@ -194,7 +204,8 @@ def detect_secrets_management(
     # Tier 1: File path indicators
     for method, indicator, confidence in FILE_PATH_INDICATORS:
         for fp in file_paths:
-            if indicator in fp:
+            parts = fp.replace("\\", "/").split("/")
+            if (indicator.endswith("/") and indicator[:-1] in parts[:-1]) or parts[-1] == indicator:
                 _add(method, "file_path", fp, confidence, f"Found {indicator} in repository")
                 break
 
@@ -206,8 +217,9 @@ def detect_secrets_management(
     # Tier 3: Code pattern detection (reuses already-fetched file contents)
     if file_contents:
         for fp, content in file_contents.items():
+            code = _strip_line_comments(content)
             for pattern, method, confidence in CODE_PATTERNS:
-                if re.search(pattern, content):
+                if re.search(pattern, code):
                     _add(method, "code_pattern", fp, confidence,
                          f"Code pattern for {method} detected")
 
@@ -282,11 +294,9 @@ _PLACEHOLDER_WORDS = {
     "TODO", "FIXME", "CHANGE", "INSERT", "PASTE", "DUMMY", "FAKE", "TEST",
 }
 
-_VALIDATION_CONTEXTS = [
-    "startswith(", "starts_with(", "beginswith(",
-    "endswith(", "match(", "test(", "search(",
-    "prefix", "format:", "example:",
-]
+_VALIDATION_CALL_BEFORE = re.compile(
+    r"(?:startswith|starts_with|beginswith|endswith|match|test|search)\(\s*[rbuf]?[\"'`]$", re.IGNORECASE
+)
 
 
 def _is_doc_file(file_path: str) -> bool:
@@ -301,19 +311,14 @@ def _is_placeholder(value: str) -> bool:
     return any(word in upper for word in _PLACEHOLDER_WORDS)
 
 
-def _is_validation_context(line: str) -> bool:
-    """Return True if the source line is a format-validation or doc context."""
-    lower = line.lower()
-    return any(ctx in lower for ctx in _VALIDATION_CONTEXTS)
+_VALIDATION_WINDOW = 80  # characters of same-line text checked before a match; keeps the check O(1) per match
 
 
-def _get_line_at_offset(content: str, offset: int) -> str:
-    """Return the full source line containing the character at offset."""
-    line_start = content.rfind("\n", 0, offset) + 1
-    line_end = content.find("\n", offset)
-    if line_end == -1:
-        line_end = len(content)
-    return content[line_start:line_end]
+def _is_validation_context(prefix: str) -> bool:
+    """Return True if the key literal is the direct operand of a validation call.
+
+    prefix is the text on the same line before the match start."""
+    return bool(_VALIDATION_CALL_BEFORE.search(prefix))
 
 
 def detect_hardcoded_keys(file_path: str, content: str) -> list[SecretsManagementDetection]:
@@ -326,14 +331,16 @@ def detect_hardcoded_keys(file_path: str, content: str) -> list[SecretsManagemen
         return []
 
     detections = []
+    starts = [0] + [m.end() for m in re.finditer("\n", content)]
 
     for pattern, provider in HARDCODED_KEY_PATTERNS:
         for match in re.finditer(pattern, content):
             raw_value = match.group(0)
             if _is_placeholder(raw_value):
                 continue
-            line = _get_line_at_offset(content, match.start())
-            if _is_validation_context(line):
+            line_start = starts[bisect.bisect_right(starts, match.start()) - 1]
+            window = content[max(line_start, match.start() - _VALIDATION_WINDOW):match.start()]
+            if _is_validation_context(window):
                 continue
             detections.append(SecretsManagementDetection(
                 method=f"hardcoded_{provider}_key",

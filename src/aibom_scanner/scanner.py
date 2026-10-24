@@ -47,15 +47,17 @@ def _get_file_tree(path: Path) -> list[str]:
     if _is_git_repo(path):
         try:
             result = subprocess.run(
-                ["git", "ls-files"],
+                ["git", "ls-files", "-z"],
                 cwd=str(path),
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="surrogateescape",
                 timeout=30,
             )
-            if result.returncode == 0 and result.stdout.strip():
-                return result.stdout.strip().splitlines()
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+            if result.returncode == 0 and result.stdout:
+                return [p for p in result.stdout.split("\0") if p]
+        except (subprocess.TimeoutExpired, FileNotFoundError, UnicodeDecodeError):
             pass
 
     # Fallback: os.walk
